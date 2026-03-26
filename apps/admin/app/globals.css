@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #eef2f7;
+  --bg-soft: #f6f8fc;
+  --fg: #121a24;
+  --fg-soft: #516074;
+  --line: #ccd4df;
+  --brand: #1f8a9b;
+  --brand-strong: #135c68;
+  --accent: #c27d3e;
+}
+
+body {
+  margin: 0;
+  color: var(--fg);
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 18% 12%, #d8edf7 0, transparent 36%),
+    radial-gradient(circle at 86% 18%, #ffe8c9 0, transparent 32%),
+    linear-gradient(145deg, #f8fbff 0%, #eef2f7 45%, #e9eef6 100%),
+    var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.02em;
+}
+
+p {
+  color: var(--fg-soft);
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: #fbfdff;
+  border-radius: 0.65rem;
+  padding: 0.58rem 0.72rem;
+  font-size: 0.92rem;
+  color: var(--fg);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(31, 138, 155, 0.14);
+  background: #ffffff;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+thead th {
+  font-weight: 600;
+  color: #2f3a49;
+  background: #f5f8fc;
+}
+
+tbody tr:hover {
+  background: rgba(18, 26, 36, 0.035);
+}
+
+.admin-surface {
+  border: 1px solid rgba(18, 26, 36, 0.12);
+  background: rgba(255, 255, 255, 0.84);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 14px 30px rgba(19, 33, 49, 0.08);
+}
+
+.admin-quiet {
+  color: #5d6d82;
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.45s ease both;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

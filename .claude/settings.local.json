@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find c:/Users/rahat/OneDrive/Desktop/PNC_Soft_Tech/Dorjee -name package.json -path */lucide-react/package.json)",
+      "Bash(xargs grep:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)",
+      "Bash(netstat -ano)",
+      "Bash(findstr LISTENING)",
+      "Bash(taskkill /PID 11332 /F)",
+      "Bash(cmd /c \"taskkill /PID 11332 /F\")",
+      "Bash(cmd /c \"netstat -ano | findstr \"\":3000\"\" | findstr \"\"LISTENING\"\"\")",
+      "Bash(cmd /c \"for /f \"\"tokens=5\"\" %a in \\(''netstat -ano ^| findstr \"\":3000 :4000 :3001\"\" ^| findstr LISTENING''\\) do taskkill /PID %a /F\")",
+      "Bash(cmd /c \"netstat -ano | findstr \"\":3000 :4000 :3001\"\" | findstr LISTENING\")",
+      "Bash(cmd /c \"netstat -ano | findstr \"\":4000\"\"\")",
+      "Bash(cmd /c \"netstat -ano | findstr \"\"4000\"\"\")",
+      "Bash(cmd /c \"tasklist | findstr /i \"\"node\"\"\")"
+    ]
+  }
+}
