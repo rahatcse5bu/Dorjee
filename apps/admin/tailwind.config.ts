@@ -5,11 +5,11 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        slate: "#121a24",
-        fog: "#eef2f7",
-        amber: "#c27d3e",
-        cyan: "#1f8a9b",
-        rose: "#c85f56",
+        brand: {
+          DEFAULT: "#0284c7",
+          dark: "#0369a1",
+          light: "#e0f2fe",
+        },
       },
     },
   },
