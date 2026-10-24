@@ -49,7 +49,7 @@ export function PageShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="mx-auto min-h-screen max-w-[1320px] lg:grid lg:grid-cols-[264px_1fr] lg:gap-6 lg:p-6">
+    <div className="min-h-screen lg:flex">
       {/* Mobile top bar */}
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-ink/10 bg-paper/90 px-4 py-3 backdrop-blur lg:hidden">
         <div className="flex items-center gap-2">
@@ -72,19 +72,22 @@ export function PageShell({ children }: { children: ReactNode }) {
       {drawerOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-ink/40" onClick={() => setDrawerOpen(false)} />
-          <div className="drawer-in absolute inset-y-0 left-0 w-[280px] max-w-[85vw] overflow-y-auto bg-paper p-3">
+          <div className="drawer-in absolute inset-y-0 left-0 w-[280px] max-w-[85vw] border-r border-ink/10 bg-paper">
             <SidebarNav onNavigate={() => setDrawerOpen(false)} />
           </div>
         </div>
       )}
 
-      <div className="hidden lg:block">
-        <div className="sticky top-6">
+      {/* Desktop sidebar: a full-height rail flush with the left edge */}
+      <div className="hidden lg:block lg:w-[260px] lg:shrink-0">
+        <div className="sticky top-0 h-screen border-r border-ink/10 bg-white/75 backdrop-blur">
           <SidebarNav />
         </div>
       </div>
 
-      <main className="min-w-0 px-4 py-5 sm:px-6 lg:px-2 lg:py-2">{children}</main>
+      <main className="min-w-0 flex-1">
+        <div className="mx-auto max-w-[1200px] px-4 py-5 sm:px-6 lg:px-8 lg:py-7">{children}</div>
+      </main>
     </div>
   );
 }

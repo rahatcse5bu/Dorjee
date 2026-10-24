@@ -77,7 +77,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const displayName = user?.name || user?.email || "";
 
   return (
-    <aside className="shop-surface flex h-full flex-col rounded-2xl p-4 lg:h-[calc(100vh-3rem)]">
+    <aside className="flex h-full flex-col overflow-y-auto p-4">
       {/* Brand */}
       <div className="flex items-center gap-2.5 px-1">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal font-bold text-white shadow-sm">
