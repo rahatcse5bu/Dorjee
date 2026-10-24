@@ -29,39 +29,31 @@ export class AuthService {
       throw new BadRequestException("Email already in use");
     }
 
-    let shopId = dto.shopId;
-    const shopScopedRoles = ["shop_staff", "tailor", "manager", "accountant"];
-
-    if (shopScopedRoles.includes(dto.role) && !shopId) {
-      throw new BadRequestException("shopId is required for shop staff roles");
-    }
-
-    if (dto.role === "shop_owner" && !shopId) {
-      if (!dto.shopName || !dto.ownerName || !dto.phone) {
-        throw new BadRequestException("Shop name, owner name, and phone are required");
-      }
-
-      const shop = await this.shopsService.create({
-        name: dto.shopName,
-        ownerName: dto.ownerName,
-        phone: dto.phone,
-        email: dto.email,
-      });
-      shopId = shop.id;
-      if (shop.trialEndsAt) {
-        await this.subscriptionsService.upsertTrial(shop.id, new Date(shop.trialEndsAt));
-      }
+    const shop = await this.shopsService.create({
+      name: dto.shopName,
+      ownerName: dto.ownerName,
+      phone: dto.phone,
+      email: dto.email,
+      address: dto.address,
+    });
+    if (shop.trialEndsAt) {
+      await this.subscriptionsService.upsertTrial(shop.id, new Date(shop.trialEndsAt));
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const user = await this.usersService.create({
       email: dto.email,
       passwordHash,
-      role: dto.role,
-      shopId: shopId ?? null,
+      role: "shop_owner",
+      shopId: shop.id,
+      name: dto.ownerName,
+      phone: dto.phone,
     });
 
-    return this.issueTokens(user.id, user.role, user.shopId ?? undefined);
+    return this.issueTokens(user.id, user.role, user.shopId ?? undefined, {
+      name: user.name,
+      email: user.email,
+    });
   }
 
   async login(dto: LoginDto) {
@@ -75,7 +67,14 @@ export class AuthService {
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    return this.issueTokens(user.id, user.role, user.shopId ?? undefined);
+    if (user.active === false) {
+      throw new UnauthorizedException("This account has been disabled. Contact your shop owner.");
+    }
+
+    return this.issueTokens(user._id.toString(), user.role, user.shopId ?? undefined, {
+      name: user.name,
+      email: user.email,
+    });
   }
 
   async registerAdmin(dto: AdminRegisterDto) {
@@ -122,13 +121,18 @@ export class AuthService {
     return this.issueTokens(user.id, user.role, undefined);
   }
 
-  private issueTokens(userId: string, role: UserRole, shopId?: string) {
+  private issueTokens(
+    userId: string,
+    role: UserRole,
+    shopId?: string,
+    profile: { name?: string; email?: string } = {},
+  ) {
     const payload = { sub: userId, role, shopId };
     const accessToken = this.jwtService.sign(payload, {
       secret: process.env.JWT_ACCESS_SECRET ?? "change_me_access",
       expiresIn: process.env.JWT_ACCESS_EXPIRES ?? "15m",
     });
 
-    return { accessToken, user: payload };
+    return { accessToken, user: { ...payload, ...profile } };
   }
 }

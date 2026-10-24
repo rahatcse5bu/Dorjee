@@ -1,9 +1,12 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { Settings2, Save, AlertCircle, CheckCircle, Store, User, Phone, Mail, MapPin } from "lucide-react";
+import { Mail, MapPin, Phone, Save, Settings2, Store, User } from "lucide-react";
+import { useToast } from "../../components/Toast";
+import { btnPrimary, cardClass, inputClass, PageHeader, Skeleton } from "../../components/ui";
 import { apiRequest } from "../../lib/api";
-import { getShopToken, getShopUser } from "../../lib/auth";
+import { useI18n } from "../../lib/i18n";
+import { errorMessage, useSession } from "../../lib/session";
 
 interface ShopProfile {
   name: string;
@@ -13,151 +16,115 @@ interface ShopProfile {
   address?: string;
 }
 
-export default function SettingsPage() {
-  const [shop, setShop] = useState<ShopProfile>({
-    name: "",
-    ownerName: "",
-    phone: "",
-    email: "",
-    address: "",
-  });
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+const emptyShop: ShopProfile = { name: "", ownerName: "", phone: "", email: "", address: "" };
 
-  const user = getShopUser();
-  const token = getShopToken();
+export default function SettingsPage() {
+  const { t } = useI18n();
+  const toast = useToast();
+  const { token, shopId } = useSession();
+  const [shop, setShop] = useState<ShopProfile>(emptyShop);
+  const [saved, setSaved] = useState<ShopProfile>(emptyShop);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    async function loadShop() {
-      if (!user?.shopId || !token) return;
-      setLoading(true);
+    void (async () => {
       try {
-        const result = await apiRequest<ShopProfile>(`/shops/${user.shopId}`, {}, token);
-        setShop({
+        const result = await apiRequest<ShopProfile>(`/shops/${shopId}`, {}, token);
+        const profile = {
           name: result.name ?? "",
           ownerName: result.ownerName ?? "",
           phone: result.phone ?? "",
           email: result.email ?? "",
           address: result.address ?? "",
-        });
+        };
+        setShop(profile);
+        setSaved(profile);
       } finally {
         setLoading(false);
       }
-    }
-    void loadShop();
-  }, [token, user?.shopId]);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
-    setError("");
-    setMessage("");
-    if (!user?.shopId || !token) { setError("Please login first."); return; }
+    setSaving(true);
     try {
-      await apiRequest(`/shops/${user.shopId}`, {
-        method: "PATCH",
-        body: JSON.stringify(shop),
-      }, token);
-      setMessage("Shop details updated successfully.");
+      await apiRequest(`/shops/${shopId}`, { method: "PATCH", body: JSON.stringify(shop) }, token);
+      setSaved(shop);
+      toast(t("settings.updated"));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Update failed");
+      toast(errorMessage(err, t("common.somethingWrong")), "error");
+    } finally {
+      setSaving(false);
     }
   }
 
+  const dirty = JSON.stringify(shop) !== JSON.stringify(saved);
   const fields = [
-    { key: "name" as const, label: "Shop Name", icon: Store, placeholder: "Your shop name", required: true, type: "text" },
-    { key: "ownerName" as const, label: "Owner Name", icon: User, placeholder: "Your full name", required: true, type: "text" },
-    { key: "phone" as const, label: "Phone", icon: Phone, placeholder: "01XXXXXXXXX", required: true, type: "text" },
-    { key: "email" as const, label: "Email", icon: Mail, placeholder: "shop@email.com", required: false, type: "email" },
+    { key: "name" as const, label: t("auth.shopName"), icon: Store, required: true, type: "text" },
+    { key: "ownerName" as const, label: t("auth.ownerName"), icon: User, required: true, type: "text" },
+    { key: "phone" as const, label: t("common.phone"), icon: Phone, required: true, type: "tel" },
+    { key: "email" as const, label: t("common.email"), icon: Mail, required: false, type: "email" },
   ];
 
   return (
-    <section className="space-y-7">
+    <section className="space-y-5">
+      <PageHeader title={t("settings.title")} subtitle={t("settings.sub")} />
 
-      {/* Header */}
-      <div>
-        <h2 className="text-3xl font-bold text-ink">Shop Settings</h2>
-        <p className="mt-1 text-sm shop-quiet">Update your shop profile, contact details, and operational information.</p>
-      </div>
-
-      <form onSubmit={onSubmit} className="space-y-5">
-
-        {/* Shop info card */}
-        <div className="rounded-2xl border border-ink/10 bg-paper/60 p-6 space-y-5">
-          <div className="flex items-center gap-2.5 border-b border-ink/8 pb-4">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-teal/10 text-teal">
-              <Settings2 className="h-4 w-4" />
-            </div>
-            <p className="font-semibold text-ink">Shop Information</p>
+      <form onSubmit={onSubmit} className={`${cardClass} space-y-5 p-5 sm:p-6`}>
+        <div className="flex items-center gap-2.5 border-b border-ink/10 pb-4">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-teal/10 text-teal">
+            <Settings2 className="h-4 w-4" />
           </div>
-
-          {loading ? (
-            <div className="grid gap-4 sm:grid-cols-2">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="space-y-1.5">
-                  <div className="h-3 w-20 rounded bg-ink/8 animate-pulse" />
-                  <div className="h-10 rounded-xl bg-ink/6 animate-pulse" />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2">
-              {fields.map(({ key, label, icon: Icon, placeholder, required, type }) => (
-                <div key={key} className="space-y-1.5">
-                  <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-ink/50">
-                    <Icon className="h-3 w-3" />
-                    {label}
-                  </label>
-                  <input
-                    className="w-full rounded-xl border border-ink/15 bg-white/80 px-3 py-2.5 text-sm focus:border-teal/50 focus:outline-none focus:ring-2 focus:ring-teal/15"
-                    type={type}
-                    placeholder={placeholder}
-                    value={shop[key] ?? ""}
-                    onChange={(e) => setShop((p) => ({ ...p, [key]: e.target.value }))}
-                    required={required}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Address */}
-          <div className="space-y-1.5">
-            <label className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-ink/50">
-              <MapPin className="h-3 w-3" />
-              Address
-            </label>
-            <textarea
-              className="w-full rounded-xl border border-ink/15 bg-white/80 px-3 py-2.5 text-sm focus:border-teal/50 focus:outline-none focus:ring-2 focus:ring-teal/15 resize-none"
-              placeholder="Street address, city…"
-              rows={3}
-              value={shop.address ?? ""}
-              onChange={(e) => setShop((p) => ({ ...p, address: e.target.value }))}
-            />
-          </div>
+          <p className="font-semibold text-ink">{t("settings.info")}</p>
         </div>
 
-        {/* Feedback */}
-        {message && (
-          <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-            <CheckCircle className="h-4 w-4 shrink-0" />
-            {message}
+        {loading ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-16" />
+            ))}
           </div>
-        )}
-        {error && (
-          <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            {error}
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {fields.map(({ key, label, icon: Icon, required, type }) => (
+              <label key={key} className="block space-y-1.5">
+                <span className="flex items-center gap-1.5 text-xs font-semibold text-ink/60">
+                  <Icon className="h-3 w-3" />
+                  {label}
+                </span>
+                <input
+                  className={inputClass}
+                  type={type}
+                  value={shop[key] ?? ""}
+                  onChange={(e) => setShop((p) => ({ ...p, [key]: e.target.value }))}
+                  required={required}
+                />
+              </label>
+            ))}
           </div>
         )}
 
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            className="flex items-center gap-2 rounded-xl bg-teal px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-teal/90"
-          >
+        <label className="block space-y-1.5">
+          <span className="flex items-center gap-1.5 text-xs font-semibold text-ink/60">
+            <MapPin className="h-3 w-3" />
+            {t("common.address")}
+          </span>
+          <textarea
+            className={`${inputClass} resize-none`}
+            rows={3}
+            value={shop.address ?? ""}
+            onChange={(e) => setShop((p) => ({ ...p, address: e.target.value }))}
+          />
+        </label>
+
+        <div className="flex flex-wrap items-center justify-end gap-3 border-t border-ink/10 pt-4">
+          {dirty && <span className="text-sm font-medium text-amber-700">{t("catalog.unsaved")}</span>}
+          <button type="submit" className={btnPrimary} disabled={!dirty || saving}>
             <Save className="h-4 w-4" />
-            Save Changes
+            {t("common.saveChanges")}
           </button>
         </div>
       </form>

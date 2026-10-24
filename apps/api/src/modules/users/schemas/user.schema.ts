@@ -17,6 +17,17 @@ export class User {
 
   @Prop({ type: String, default: null })
   shopId?: string | null;
+
+  @Prop({ trim: true })
+  name?: string;
+
+  @Prop({ trim: true })
+  phone?: string;
+
+  // Disabled accounts cannot log in.
+  @Prop({ default: true })
+  active?: boolean;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
+UserSchema.index({ shopId: 1, createdAt: -1 });

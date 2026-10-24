@@ -2,13 +2,16 @@ import { Type } from "class-transformer";
 import {
   IsArray,
   IsDateString,
+  IsIn,
   IsNumber,
   IsObject,
   IsOptional,
   IsString,
   Min,
+  ValidateIf,
   ValidateNested,
 } from "class-validator";
+import { ORDER_STATUSES } from "../schemas/order.schema";
 
 class UpdateOrderItemDto {
   @IsOptional()
@@ -50,7 +53,7 @@ export class UpdateOrderDto {
   measurements?: Record<string, string | number>;
 
   @IsOptional()
-  @IsString()
+  @IsIn(ORDER_STATUSES)
   status?: string;
 
   @IsOptional()
@@ -58,6 +61,23 @@ export class UpdateOrderDto {
   amount?: number;
 
   @IsOptional()
+  @IsNumber()
+  @Min(0)
+  discount?: number;
+
+  // null clears the delivery date.
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
   @IsDateString()
-  deliveryDate?: string;
+  deliveryDate?: string | null;
+
+  // null unassigns the order.
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  assignedTo?: string | null;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }

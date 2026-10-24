@@ -1,13 +1,9 @@
 import { UserRole } from "@dorjee/types";
 import { IsEmail, IsIn, IsNotEmpty, IsOptional, IsString, MinLength } from "class-validator";
 
-const allowedRoles: UserRole[] = [
-  "shop_owner",
-  "shop_staff",
-  "tailor",
-  "manager",
-  "accountant",
-];
+// Public sign-up only creates a new shop and its owner. Staff accounts are
+// created by the shop owner through /shops/:shopId/staff.
+const allowedRoles: UserRole[] = ["shop_owner"];
 
 export class RegisterDto {
   @IsEmail()
@@ -17,24 +13,23 @@ export class RegisterDto {
   @MinLength(6)
   password!: string;
 
-  @IsOptional()
-  @IsString()
-  shopId?: string;
-
   @IsString()
   @IsIn(allowedRoles)
   role!: UserRole;
 
-  @IsOptional()
   @IsString()
   @IsNotEmpty()
-  shopName?: string;
+  shopName!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  ownerName!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  phone!: string;
 
   @IsOptional()
   @IsString()
-  ownerName?: string;
-
-  @IsOptional()
-  @IsString()
-  phone?: string;
+  address?: string;
 }

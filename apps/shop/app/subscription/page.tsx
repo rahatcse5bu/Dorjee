@@ -1,18 +1,12 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import {
-  CreditCard,
-  CheckCircle,
-  AlertCircle,
-  Zap,
-  ChevronDown,
-  Clock,
-  CalendarDays,
-  BadgeCheck,
-} from "lucide-react";
+import { BadgeCheck, CalendarDays, Clock, CreditCard, Zap } from "lucide-react";
+import { useToast } from "../../components/Toast";
+import { Alert, btnPrimary, cardClass, EmptyState, Field, inputClass, PageHeader } from "../../components/ui";
 import { apiRequest } from "../../lib/api";
-import { getShopToken, getShopUser } from "../../lib/auth";
+import { TranslationKey, useI18n } from "../../lib/i18n";
+import { errorMessage, useSession } from "../../lib/session";
 
 interface Subscription {
   planCode: string;
@@ -31,230 +25,202 @@ interface Payment {
   createdAt: string;
 }
 
-const PAYMENT_STATUS: Record<string, { label: string; badge: string; dot: string }> = {
-  approved: { label: "Approved", badge: "bg-emerald-100 text-emerald-700", dot: "bg-emerald-500" },
-  pending:  { label: "Pending",  badge: "bg-amber-100 text-amber-700",   dot: "bg-amber-500" },
-  rejected: { label: "Rejected", badge: "bg-red-100 text-red-700",       dot: "bg-red-500" },
+const PAYMENT_STYLE: Record<string, { badge: string; dot: string }> = {
+  approved: { badge: "bg-emerald-50 text-emerald-700", dot: "bg-emerald-500" },
+  pending: { badge: "bg-amber-50 text-amber-800", dot: "bg-amber-500" },
+  rejected: { badge: "bg-red-50 text-red-700", dot: "bg-red-500" },
 };
 
-const SUB_STATUS: Record<string, { label: string; dot: string; text: string }> = {
-  active:   { label: "Active",   dot: "bg-emerald-500", text: "text-emerald-600" },
-  trial:    { label: "Trial",    dot: "bg-blue-500",    text: "text-blue-600" },
-  expired:  { label: "Expired",  dot: "bg-red-500",     text: "text-red-600" },
-  inactive: { label: "Inactive", dot: "bg-ink/30",      text: "text-ink/50" },
+const SUB_STYLE: Record<string, { dot: string; text: string }> = {
+  active: { dot: "bg-emerald-500", text: "text-emerald-700" },
+  trial: { dot: "bg-blue-500", text: "text-blue-700" },
+  pending: { dot: "bg-amber-500", text: "text-amber-700" },
+  past_due: { dot: "bg-red-500", text: "text-red-700" },
+  expired: { dot: "bg-red-500", text: "text-red-700" },
+  inactive: { dot: "bg-ink/30", text: "text-ink/60" },
+  cancelled: { dot: "bg-ink/30", text: "text-ink/60" },
 };
 
 export default function SubscriptionPage() {
-  const user = getShopUser();
-  const token = getShopToken();
+  const { t, money, date } = useI18n();
+  const toast = useToast();
+  const { token, shopId } = useSession();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [method, setMethod] = useState<"bkash_manual" | "nagad_manual">("bkash_manual");
   const [transactionId, setTransactionId] = useState("");
   const [proofImageUrl, setProofImageUrl] = useState("");
-  const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   async function loadData() {
-    if (!user?.shopId || !token) return;
     const [subscriptionResult, paymentResult] = await Promise.all([
-      apiRequest<Subscription>(`/shops/${user.shopId}/subscription`, {}, token),
-      apiRequest<Payment[]>(`/shops/${user.shopId}/payments`, {}, token),
+      apiRequest<Subscription>(`/shops/${shopId}/subscription`, {}, token),
+      apiRequest<Payment[]>(`/shops/${shopId}/payments`, {}, token),
     ]);
     setSubscription(subscriptionResult);
     setPayments(paymentResult);
   }
 
   useEffect(() => {
-    void loadData();
-  }, [token, user?.shopId]);
+    void loadData().catch((err) => setError(errorMessage(err, t("common.somethingWrong"))));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setError("");
-    setMessage("");
-    if (!user?.shopId || !token) { setError("Please login first."); return; }
+    setSubmitting(true);
     try {
-      await apiRequest(`/shops/${user.shopId}/payments/manual`, {
-        method: "POST",
-        body: JSON.stringify({ method, transactionId, proofImageUrl: proofImageUrl || undefined }),
-      }, token);
+      await apiRequest(
+        `/shops/${shopId}/payments/manual`,
+        { method: "POST", body: JSON.stringify({ method, transactionId, proofImageUrl: proofImageUrl || undefined }) },
+        token,
+      );
       setTransactionId("");
       setProofImageUrl("");
-      setMessage("Payment submitted. Dorjee admin will verify soon.");
+      toast(t("sub.submitted"));
       await loadData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to submit payment");
+      setError(errorMessage(err, t("common.somethingWrong")));
+    } finally {
+      setSubmitting(false);
     }
   }
 
-  const statusCfg = SUB_STATUS[subscription?.status ?? ""] ?? SUB_STATUS.inactive;
+  const status = subscription?.status ?? "inactive";
+  const statusStyle = SUB_STYLE[status] ?? SUB_STYLE.inactive;
+  const amount = subscription?.amountBdt ?? 500;
 
   return (
-    <section className="space-y-7">
-
-      {/* Header */}
-      <div>
-        <h2 className="text-3xl font-bold text-ink">Subscription</h2>
-        <p className="mt-1 text-sm shop-quiet">Manage your billing plan, submit payments, and view payment history.</p>
-      </div>
+    <section className="space-y-5">
+      <PageHeader title={t("sub.title")} subtitle={t("sub.sub")} />
 
       {/* Plan card */}
-      <div className="rounded-2xl overflow-hidden border border-ink/10">
-        <div className="flex items-center justify-between bg-gradient-to-r from-teal to-[#0f4250] px-6 py-7">
+      <div className="overflow-hidden rounded-2xl border border-ink/10">
+        <div className="flex items-center justify-between bg-gradient-to-r from-teal to-[#0f4250] px-6 py-6">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-white/60">Current Plan</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-white/60">{t("sub.currentPlan")}</p>
             <p className="mt-2 text-3xl font-bold text-white">
-              {subscription?.planCode ?? "Monthly 500 BDT"}
-            </p>
-            <p className="mt-1 text-sm text-white/65">
-              ৳{subscription?.amountBdt ?? 500} / month
+              {money(amount)} <span className="text-base font-medium text-white/70">{t("sub.perMonth")}</span>
             </p>
           </div>
           <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/15 text-white">
             <Zap className="h-7 w-7" />
           </div>
         </div>
-        <div className="grid gap-0 bg-paper/60 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-ink/8">
+        <div className="grid divide-y divide-ink/10 bg-white/70 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
           <div className="px-6 py-4">
-            <p className="text-xs font-semibold uppercase tracking-wider text-ink/40 mb-1.5">Status</p>
-            <div className="flex items-center gap-2">
-              <span className={`h-2 w-2 rounded-full ${statusCfg.dot}`} />
-              <span className={`font-semibold text-sm ${statusCfg.text}`}>{statusCfg.label}</span>
-            </div>
+            <p className="mb-1.5 text-xs font-semibold text-ink/50">{t("sub.status")}</p>
+            <p className="flex items-center gap-2">
+              <span className={`h-2 w-2 rounded-full ${statusStyle.dot}`} />
+              <span className={`text-sm font-semibold ${statusStyle.text}`}>{t(`sub.st.${status}` as TranslationKey)}</span>
+            </p>
           </div>
           {subscription?.trialEndsAt && (
             <div className="px-6 py-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-ink/40 mb-1.5 flex items-center gap-1">
-                <Clock className="h-3 w-3" /> Trial Ends
+              <p className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-ink/50">
+                <Clock className="h-3 w-3" /> {t("sub.trialEnds")}
               </p>
-              <p className="font-semibold text-sm text-ink">
-                {new Date(subscription.trialEndsAt).toLocaleDateString()}
-              </p>
+              <p className="text-sm font-semibold text-ink">{date(subscription.trialEndsAt)}</p>
             </div>
           )}
           {subscription?.nextBillingDate && (
             <div className="px-6 py-4">
-              <p className="text-xs font-semibold uppercase tracking-wider text-ink/40 mb-1.5 flex items-center gap-1">
-                <CalendarDays className="h-3 w-3" /> Next Billing
+              <p className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-ink/50">
+                <CalendarDays className="h-3 w-3" /> {t("sub.nextBilling")}
               </p>
-              <p className="font-semibold text-sm text-ink">
-                {new Date(subscription.nextBillingDate).toLocaleDateString()}
-              </p>
+              <p className="text-sm font-semibold text-ink">{date(subscription.nextBillingDate)}</p>
             </div>
           )}
         </div>
       </div>
 
       {/* Submit payment */}
-      <div className="rounded-2xl border border-ink/10 bg-paper/60 p-6 space-y-5">
-        <div className="flex items-center gap-2.5 border-b border-ink/8 pb-4">
+      <form onSubmit={onSubmit} className={`${cardClass} space-y-4 p-5 sm:p-6`}>
+        <div className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-brass/10 text-brass">
             <CreditCard className="h-4 w-4" />
           </div>
-          <p className="font-semibold text-ink">Submit Payment</p>
+          <div>
+            <p className="font-semibold text-ink">{t("sub.submitPayment")}</p>
+            <p className="text-xs text-ink/55">{t("sub.howTo", { amount: String(amount) })}</p>
+          </div>
         </div>
-
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-ink/50">Payment Method</label>
-              <div className="relative">
-                <select
-                  className="w-full appearance-none rounded-xl border border-ink/15 bg-white/80 px-3 py-2.5 pr-9 text-sm focus:border-teal/50 focus:outline-none focus:ring-2 focus:ring-teal/15"
-                  value={method}
-                  onChange={(e) => setMethod(e.target.value as "bkash_manual" | "nagad_manual")}
-                >
-                  <option value="bkash_manual">bKash</option>
-                  <option value="nagad_manual">Nagad</option>
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/30" />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold uppercase tracking-wider text-ink/50">Transaction ID</label>
-              <input
-                className="w-full rounded-xl border border-ink/15 bg-white/80 px-3 py-2.5 text-sm focus:border-teal/50 focus:outline-none focus:ring-2 focus:ring-teal/15"
-                placeholder="e.g. ABC123XYZ"
-                value={transactionId}
-                onChange={(e) => setTransactionId(e.target.value)}
-                required
-              />
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold uppercase tracking-wider text-ink/50">Proof Image URL <span className="text-ink/30 normal-case font-normal">(optional)</span></label>
-            <input
-              className="w-full rounded-xl border border-ink/15 bg-white/80 px-3 py-2.5 text-sm focus:border-teal/50 focus:outline-none focus:ring-2 focus:ring-teal/15"
-              placeholder="https://…"
-              value={proofImageUrl}
-              onChange={(e) => setProofImageUrl(e.target.value)}
-            />
-          </div>
-          {message && (
-            <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-              <CheckCircle className="h-4 w-4 shrink-0" />
-              {message}
-            </div>
-          )}
-          {error && (
-            <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              {error}
-            </div>
-          )}
-          <div className="flex justify-end pt-1">
-            <button
-              type="submit"
-              className="flex items-center gap-2 rounded-xl bg-teal px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-teal/90"
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label={t("sub.method")}>
+            <select
+              className={inputClass}
+              value={method}
+              onChange={(e) => setMethod(e.target.value as "bkash_manual" | "nagad_manual")}
             >
-              <CreditCard className="h-4 w-4" />
-              Submit Payment
-            </button>
-          </div>
-        </form>
-      </div>
+              <option value="bkash_manual">{t("method.bkash")}</option>
+              <option value="nagad_manual">{t("method.nagad")}</option>
+            </select>
+          </Field>
+          <Field label={t("sub.txnId")}>
+            <input
+              className={inputClass}
+              placeholder="e.g. ABC123XYZ"
+              value={transactionId}
+              onChange={(e) => setTransactionId(e.target.value)}
+              required
+            />
+          </Field>
+        </div>
+        <Field label={`${t("sub.proof")} (${t("common.optional")})`}>
+          <input
+            className={inputClass}
+            type="url"
+            placeholder="https://…"
+            value={proofImageUrl}
+            onChange={(e) => setProofImageUrl(e.target.value)}
+          />
+        </Field>
+        {error && <Alert>{error}</Alert>}
+        <div className="flex justify-end">
+          <button type="submit" className={btnPrimary} disabled={submitting}>
+            <CreditCard className="h-4 w-4" />
+            {t("sub.submit")}
+          </button>
+        </div>
+      </form>
 
       {/* Payment history */}
-      <div className="rounded-2xl border border-ink/10 bg-paper/60 overflow-hidden">
-        <div className="flex items-center gap-2.5 border-b border-ink/8 px-5 py-4">
-          <BadgeCheck className="h-4 w-4 text-ink/40" />
-          <p className="text-sm font-semibold text-ink">Payment History</p>
+      <div className={`${cardClass} overflow-hidden`}>
+        <div className="flex items-center gap-2.5 border-b border-ink/10 px-5 py-3.5">
+          <BadgeCheck className="h-4 w-4 text-ink/45" />
+          <p className="font-semibold text-ink">{t("sub.history")}</p>
         </div>
         {payments.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-2 py-12 text-ink/35">
-            <CreditCard className="h-8 w-8 opacity-30" />
-            <p className="text-sm">No payments submitted yet.</p>
-          </div>
+          <EmptyState icon={CreditCard} title={t("sub.noPayments")} />
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead>
-                <tr className="border-b border-ink/8">
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink/40">Date</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink/40">Method</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink/40">Amount</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink/40">Txn ID</th>
-                  <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink/40">Status</th>
+                <tr className="border-b border-ink/10 bg-paper/60 text-left text-xs font-semibold text-ink/50">
+                  <th className="px-5 py-3">{t("sub.col.date")}</th>
+                  <th className="px-5 py-3">{t("sub.col.method")}</th>
+                  <th className="px-5 py-3">{t("sub.col.amount")}</th>
+                  <th className="px-5 py-3">{t("sub.col.txn")}</th>
+                  <th className="px-5 py-3">{t("sub.col.status")}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-ink/5">
+              <tbody className="divide-y divide-ink/[0.06]">
                 {payments.map((payment) => {
-                  const cfg = PAYMENT_STATUS[payment.status] ?? PAYMENT_STATUS.pending;
+                  const style = PAYMENT_STYLE[payment.status] ?? PAYMENT_STYLE.pending;
                   return (
-                    <tr key={payment._id} className="hover:bg-white/50 transition-colors">
-                      <td className="px-5 py-3.5 text-ink/60">
-                        {new Date(payment.createdAt).toLocaleDateString()}
+                    <tr key={payment._id}>
+                      <td className="px-5 py-3 text-ink/65">{date(payment.createdAt)}</td>
+                      <td className="px-5 py-3 font-medium text-ink">
+                        {payment.method === "bkash_manual" ? t("method.bkash") : t("method.nagad")}
                       </td>
-                      <td className="px-5 py-3.5 font-medium text-ink capitalize">
-                        {payment.method.replace("_manual", "")}
-                      </td>
-                      <td className="px-5 py-3.5 font-semibold text-ink">৳{payment.amountBdt}</td>
-                      <td className="px-5 py-3.5 font-mono text-xs text-ink/50">{payment.transactionId}</td>
-                      <td className="px-5 py-3.5">
-                        <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${cfg.badge}`}>
-                          <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
-                          {cfg.label}
+                      <td className="px-5 py-3 font-semibold text-ink">{money(payment.amountBdt)}</td>
+                      <td className="px-5 py-3 font-mono text-xs text-ink/55">{payment.transactionId}</td>
+                      <td className="px-5 py-3">
+                        <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${style.badge}`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
+                          {t(`sub.pay.${payment.status}` as TranslationKey)}
                         </span>
                       </td>
                     </tr>

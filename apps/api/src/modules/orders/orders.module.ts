@@ -1,11 +1,17 @@
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
+import { OrderCounter, OrderCounterSchema } from "./schemas/order-counter.schema";
 import { Order, OrderSchema } from "./schemas/order.schema";
 import { OrdersController } from "./orders.controller";
 import { OrdersService } from "./orders.service";
 
 @Module({
-  imports: [MongooseModule.forFeature([{ name: Order.name, schema: OrderSchema }])],
+  imports: [
+    MongooseModule.forFeature([
+      { name: Order.name, schema: OrderSchema },
+      { name: OrderCounter.name, schema: OrderCounterSchema },
+    ]),
+  ],
   controllers: [OrdersController],
   providers: [OrdersService],
 })

@@ -3,6 +3,7 @@ import {
   ArrayMinSize,
   IsArray,
   IsDateString,
+  IsIn,
   IsNotEmpty,
   IsNumber,
   IsObject,
@@ -11,6 +12,7 @@ import {
   Min,
   ValidateNested,
 } from "class-validator";
+import { ORDER_STATUSES, PAYMENT_METHODS } from "../schemas/order.schema";
 
 class CreateOrderItemDto {
   @IsString()
@@ -52,13 +54,35 @@ export class CreateOrderDto {
   measurements?: Record<string, string | number>;
 
   @IsOptional()
-  @IsString()
+  @IsIn(ORDER_STATUSES)
   status?: string;
 
   @IsNumber()
   amount!: number;
 
   @IsOptional()
+  @IsNumber()
+  @Min(0)
+  discount?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  advance?: number;
+
+  @IsOptional()
+  @IsIn(PAYMENT_METHODS)
+  advanceMethod?: string;
+
+  @IsOptional()
   @IsDateString()
   deliveryDate?: string;
+
+  @IsOptional()
+  @IsString()
+  assignedTo?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
 }

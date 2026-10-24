@@ -24,6 +24,11 @@ export class CustomersController {
     return this.customersService.list(shopId);
   }
 
+  @Get(":customerId")
+  getOne(@Param("shopId") shopId: string, @Param("customerId") customerId: string) {
+    return this.customersService.findOne(shopId, customerId);
+  }
+
   @Post()
   create(@Param("shopId") shopId: string, @Body() payload: CreateCustomerDto) {
     return this.customersService.create(shopId, payload);

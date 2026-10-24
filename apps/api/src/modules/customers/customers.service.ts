@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import { Model } from "mongoose";
+import { isValidObjectId, Model } from "mongoose";
 import { Customer, CustomerDocument } from "./schemas/customer.schema";
 import { CreateCustomerDto } from "./dto/create-customer.dto";
 import { UpdateCustomerDto } from "./dto/update-customer.dto";
@@ -17,6 +17,16 @@ export class CustomersService {
 
   list(shopId: string) {
     return this.customerModel.find({ shopId }).sort({ createdAt: -1 }).lean();
+  }
+
+  async findOne(shopId: string, customerId: string) {
+    const customer = isValidObjectId(customerId)
+      ? await this.customerModel.findOne({ _id: customerId, shopId }).lean()
+      : null;
+    if (!customer) {
+      throw new NotFoundException("Customer not found");
+    }
+    return customer;
   }
 
   async update(shopId: string, customerId: string, payload: UpdateCustomerDto) {
