@@ -11,6 +11,7 @@ export class CatalogService {
       shopId,
       measurementLabels: shop?.measurementLabels ?? [],
       clothTypes: shop?.clothTypes ?? [],
+      clothTypeMeasurements: shop?.clothTypeMeasurements ?? {},
     };
   }
 
@@ -18,7 +19,17 @@ export class CatalogService {
     return this.shopsService.update(shopId, { measurementLabels });
   }
 
-  updateClothTypes(shopId: string, clothTypes: string[]) {
-    return this.shopsService.update(shopId, { clothTypes });
+  updateClothTypes(shopId: string, clothTypes: string[], clothTypeMeasurements?: Record<string, unknown>) {
+    if (!clothTypeMeasurements) {
+      return this.shopsService.update(shopId, { clothTypes });
+    }
+    // Keep entries only for existing cloth types, with unique non-empty label strings.
+    const mapping: Record<string, string[]> = {};
+    for (const type of clothTypes) {
+      const labels = clothTypeMeasurements[type];
+      if (!Array.isArray(labels)) continue;
+      mapping[type] = [...new Set(labels.filter((l): l is string => typeof l === "string" && l.trim() !== "").map((l) => l.trim()))];
+    }
+    return this.shopsService.update(shopId, { clothTypes, clothTypeMeasurements: mapping });
   }
 }

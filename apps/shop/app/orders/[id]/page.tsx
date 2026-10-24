@@ -35,7 +35,6 @@ import {
   StatusBadge,
 } from "../../../components/ui";
 import { apiRequest } from "../../../lib/api";
-import { canManageShop } from "../../../lib/auth";
 import { TranslationKey, useI18n } from "../../../lib/i18n";
 import {
   Customer,
@@ -47,13 +46,12 @@ import {
   payable,
   PAYMENT_METHODS,
   StaffMember,
+  Catalog,
+  EMPTY_CATALOG,
+  normalizeCatalog,
 } from "../../../lib/orders";
+import { usePermissions } from "../../../lib/permissions";
 import { errorMessage, useSession } from "../../../lib/session";
-
-interface Catalog {
-  clothTypes: string[];
-  measurementLabels: string[];
-}
 
 function toDateInput(value?: string | null) {
   return value ? new Date(value).toISOString().slice(0, 10) : "";
@@ -65,13 +63,17 @@ export default function OrderDetailPage() {
   const router = useRouter();
   const toast = useToast();
   const { t, money, date, num, lang } = useI18n();
-  const { user, token, shopId } = useSession();
-  const canManage = canManageShop(user?.role);
+  const { token, shopId } = useSession();
+  const { can } = usePermissions();
+  // Orders: view can change status only; manage edits everything else.
+  const canEdit = can("orders", "manage");
+  const canSeeAmounts = can("payments");
+  const canTakePayments = can("payments", "manage");
 
   const [order, setOrder] = useState<Order | null>(null);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [staff, setStaff] = useState<StaffMember[]>([]);
-  const [catalog, setCatalog] = useState<Catalog>({ clothTypes: [], measurementLabels: [] });
+  const [catalog, setCatalog] = useState<Catalog>(EMPTY_CATALOG);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -115,10 +117,7 @@ export default function OrderDetailPage() {
         ]);
         setCustomer(customerResult);
         setStaff(staffResult);
-        setCatalog({
-          clothTypes: catalogResult.clothTypes ?? [],
-          measurementLabels: catalogResult.measurementLabels ?? [],
-        });
+        setCatalog(normalizeCatalog(catalogResult));
       } catch {
         setNotFound(true);
       } finally {
@@ -151,13 +150,16 @@ export default function OrderDetailPage() {
     setSavingDetails(true);
     try {
       await patchOrder(
-        {
-          status: details.status,
-          deliveryDate: details.deliveryDate || null,
-          assignedTo: details.assignedTo || null,
-          discount: Number(details.discount) || 0,
-          notes: details.notes,
-        },
+        canEdit
+          ? {
+              status: details.status,
+              deliveryDate: details.deliveryDate || null,
+              assignedTo: details.assignedTo || null,
+              notes: details.notes,
+              // Discount is hidden from users who can't see money, so never send it for them.
+              ...(canSeeAmounts ? { discount: Number(details.discount) || 0 } : {}),
+            }
+          : { status: details.status },
         "order.updated",
       );
     } catch (err) {
@@ -277,7 +279,7 @@ export default function OrderDetailPage() {
     details.status !== order.status ||
     details.deliveryDate !== toDateInput(order.deliveryDate) ||
     details.assignedTo !== (order.assignedTo ?? "") ||
-    (Number(details.discount) || 0) !== (order.discount ?? 0) ||
+    (canSeeAmounts && (Number(details.discount) || 0) !== (order.discount ?? 0)) ||
     details.notes !== (order.notes ?? "");
 
   return (
@@ -308,7 +310,7 @@ export default function OrderDetailPage() {
         </div>
       </div>
 
-      {due > 0 && order.status === "ready" && (
+      {canSeeAmounts && due > 0 && order.status === "ready" && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           <span className="flex items-center gap-2 font-medium">
             <Wallet className="h-4 w-4" />
@@ -326,17 +328,19 @@ export default function OrderDetailPage() {
                 <Scissors className="h-4 w-4 text-teal" />
                 {t("order.items")}
               </h2>
-              <button
-                type="button"
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-teal hover:underline"
-                onClick={() => {
-                  setItemsError("");
-                  setEditingItems(orderItems(order).map((item) => itemToDraft(item, catalog.measurementLabels)));
-                }}
-              >
-                <Pencil className="h-3.5 w-3.5" />
-                {t("order.editItems")}
-              </button>
+              {canEdit && canSeeAmounts && (
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-teal hover:underline"
+                  onClick={() => {
+                    setItemsError("");
+                    setEditingItems(orderItems(order).map((item) => itemToDraft(item, catalog)));
+                  }}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  {t("order.editItems")}
+                </button>
+              )}
             </div>
             <ul className="divide-y divide-ink/[0.06]">
               {orderItems(order).map((item, index) => {
@@ -348,10 +352,12 @@ export default function OrderDetailPage() {
                         {item.clothType}
                         {item.quantity > 1 && <span className="ml-1.5 font-normal text-ink/50">× {num(item.quantity)}</span>}
                       </p>
-                      <p className="text-sm text-ink/70">
-                        {item.quantity > 1 && <span className="mr-2 text-ink/45">{money(item.price)} ×{num(item.quantity)}</span>}
-                        <span className="font-semibold text-ink">{money(item.price * item.quantity)}</span>
-                      </p>
+                      {canSeeAmounts && (
+                        <p className="text-sm text-ink/70">
+                          {item.quantity > 1 && <span className="mr-2 text-ink/45">{money(item.price)} ×{num(item.quantity)}</span>}
+                          <span className="font-semibold text-ink">{money(item.price * item.quantity)}</span>
+                        </p>
+                      )}
                     </div>
                     {measurements.length > 0 && (
                       <dl className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5">
@@ -370,6 +376,7 @@ export default function OrderDetailPage() {
           </div>
 
           {/* Payments */}
+          {canSeeAmounts && (
           <div className={cardClass}>
             <div className="flex items-center justify-between border-b border-ink/10 px-5 py-3.5">
               <h2 className="flex items-center gap-2 font-semibold text-ink">
@@ -397,7 +404,7 @@ export default function OrderDetailPage() {
                         {staffName(payment.receivedBy) ? ` · ${staffName(payment.receivedBy)}` : ""}
                       </p>
                     </div>
-                    {canManage && (
+                    {canTakePayments && (
                       <button
                         type="button"
                         onClick={() => void removePayment(payment._id)}
@@ -411,7 +418,7 @@ export default function OrderDetailPage() {
                 ))}
               </ul>
             )}
-            {due > 0 && (
+            {canTakePayments && due > 0 && (
               <form onSubmit={addPayment} className="space-y-3 border-t border-ink/10 bg-paper/40 px-5 py-4">
                 <p className="text-sm font-semibold text-ink">{t("order.addPayment")}</p>
                 <div className="grid gap-2 sm:grid-cols-[1fr_140px_1fr_auto]">
@@ -453,6 +460,7 @@ export default function OrderDetailPage() {
               </form>
             )}
           </div>
+          )}
         </div>
 
         {/* Sidebar */}
@@ -480,6 +488,7 @@ export default function OrderDetailPage() {
           {/* Summary */}
           <div className={`${cardClass} p-5`}>
             <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-ink/45">{t("order.summary")}</p>
+            {canSeeAmounts && (
             <dl className="space-y-2 text-sm">
               <div className="flex justify-between text-ink/65">
                 <dt>{t("orderForm.subtotal")}</dt>
@@ -504,7 +513,8 @@ export default function OrderDetailPage() {
                 <dd className={due > 0 ? "text-coral" : "text-emerald-700"}>{money(due)}</dd>
               </div>
             </dl>
-            <div className="mt-3 text-sm">
+            )}
+            <div className={canSeeAmounts ? "mt-3 text-sm" : "text-sm"}>
               <span className="text-ink/50">{t("orders.col.delivery")}: </span>
               <DeliveryLabel order={order} />
             </div>
@@ -526,6 +536,8 @@ export default function OrderDetailPage() {
                 ))}
               </select>
             </Field>
+            {canEdit && (
+            <>
             <Field label={t("orderForm.deliveryDate")}>
               <input
                 type="date"
@@ -552,17 +564,19 @@ export default function OrderDetailPage() {
                 </select>
               </Field>
             )}
-            <Field label={t("orderForm.discount")}>
-              <input
-                type="number"
-                inputMode="decimal"
-                min={0}
-                className={inputClass}
-                placeholder="0"
-                value={details.discount}
-                onChange={(e) => setDetails((d) => ({ ...d, discount: e.target.value }))}
-              />
-            </Field>
+            {canSeeAmounts && (
+              <Field label={t("orderForm.discount")}>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  className={inputClass}
+                  placeholder="0"
+                  value={details.discount}
+                  onChange={(e) => setDetails((d) => ({ ...d, discount: e.target.value }))}
+                />
+              </Field>
+            )}
             <Field label={t("common.notes")}>
               <textarea
                 rows={3}
@@ -572,6 +586,8 @@ export default function OrderDetailPage() {
                 onChange={(e) => setDetails((d) => ({ ...d, notes: e.target.value }))}
               />
             </Field>
+            </>
+            )}
             <button type="submit" className={`${btnPrimary} w-full`} disabled={!detailsDirty || savingDetails}>
               {t("common.saveChanges")}
             </button>
@@ -598,7 +614,7 @@ export default function OrderDetailPage() {
             </div>
           )}
 
-          {canManage && (
+          {canEdit && (
             <button type="button" className={`${btnDanger} w-full`} onClick={() => void deleteOrder()}>
               <Trash2 className="h-4 w-4" />
               {t("order.deleteOrder")}
@@ -629,9 +645,8 @@ export default function OrderDetailPage() {
             <ItemsEditor
               items={editingItems}
               onChange={setEditingItems}
-              clothTypes={catalog.clothTypes}
-              measurementLabels={catalog.measurementLabels}
-              savedMeasurements={customer?.measurements}
+              catalog={catalog}
+              customer={customer}
               prefillHint={false}
             />
           )}

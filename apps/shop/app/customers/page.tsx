@@ -8,9 +8,9 @@ import { CustomerFormModal } from "../../components/CustomerFormModal";
 import { useToast } from "../../components/Toast";
 import { Alert, btnIcon, btnPrimary, cardClass, EmptyState, inputClass, PageHeader, Skeleton } from "../../components/ui";
 import { apiRequest } from "../../lib/api";
-import { canManageShop } from "../../lib/auth";
 import { useI18n } from "../../lib/i18n";
 import { Customer, dueAmount, Order } from "../../lib/orders";
+import { usePermissions } from "../../lib/permissions";
 import { errorMessage, useSession } from "../../lib/session";
 
 interface CustomerStats {
@@ -23,8 +23,10 @@ export default function CustomersPage() {
   const router = useRouter();
   const toast = useToast();
   const { t, money, num, date } = useI18n();
-  const { user, token, shopId } = useSession();
-  const canDelete = canManageShop(user?.role);
+  const { token, shopId } = useSession();
+  const { can } = usePermissions();
+  const canManage = can("customers", "manage");
+  const canSeeAmounts = can("payments");
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -38,7 +40,7 @@ export default function CustomersPage() {
     try {
       const [customerResult, orderResult] = await Promise.all([
         apiRequest<Customer[]>(`/shops/${shopId}/customers`, {}, token),
-        apiRequest<Order[]>(`/shops/${shopId}/orders`, {}, token),
+        apiRequest<Order[]>(`/shops/${shopId}/orders`, {}, token).catch(() => []),
       ]);
       setCustomers(customerResult);
       setOrders(orderResult);
@@ -93,10 +95,12 @@ export default function CustomersPage() {
         title={t("customers.title")}
         subtitle={t("customers.sub")}
         actions={
-          <button type="button" className={btnPrimary} onClick={openCreate}>
-            <UserPlus className="h-4 w-4" />
-            {t("customers.add")}
-          </button>
+          canManage ? (
+            <button type="button" className={btnPrimary} onClick={openCreate}>
+              <UserPlus className="h-4 w-4" />
+              {t("customers.add")}
+            </button>
+          ) : undefined
         }
       />
 
@@ -125,7 +129,7 @@ export default function CustomersPage() {
             icon={Users}
             title={customers.length === 0 ? t("customers.empty") : t("customers.emptySearch")}
             action={
-              customers.length === 0 ? (
+              customers.length === 0 && canManage ? (
                 <button type="button" className={btnPrimary} onClick={openCreate}>
                   <UserPlus className="h-4 w-4" />
                   {t("customers.add")}
@@ -169,10 +173,12 @@ export default function CustomersPage() {
                   <span className="hidden text-sm text-ink/65 md:block">{customer.phone}</span>
                   <span className="hidden text-right text-sm text-ink/65 md:block">{num(s.orders)}</span>
                   <span className="text-right text-sm md:block">
-                    {s.due > 0 ? <span className="font-semibold text-coral">{money(s.due)}</span> : <span className="text-ink/30">—</span>}
+                    {canSeeAmounts && s.due > 0 ? <span className="font-semibold text-coral">{money(s.due)}</span> : <span className="text-ink/30">—</span>}
                   </span>
                   <span className="hidden text-sm text-ink/55 md:block">{s.lastOrder ? date(s.lastOrder) : "—"}</span>
                   <div className="hidden items-center justify-end gap-0.5 md:flex" onClick={(e) => e.stopPropagation()}>
+                    {canManage ? (
+                    <>
                     <button
                       type="button"
                       className={btnIcon}
@@ -184,7 +190,6 @@ export default function CustomersPage() {
                     >
                       <Pencil className="h-4 w-4" />
                     </button>
-                    {canDelete ? (
                       <button
                         type="button"
                         className={`${btnIcon} hover:bg-coral/10 hover:text-coral`}
@@ -193,6 +198,7 @@ export default function CustomersPage() {
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
+                    </>
                     ) : (
                       <ChevronRight className="h-4 w-4 text-ink/30" />
                     )}

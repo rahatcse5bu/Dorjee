@@ -17,8 +17,13 @@ export class Customer {
   @Prop({ trim: true })
   address?: string;
 
+  // Legacy flat measurements, still used to pre-fill when no per-type value exists.
   @Prop({ type: Object, default: {} })
   measurements!: Record<string, string | number>;
+
+  // Saved measurements per cloth type, e.g. { Shirt: { Length: 30 }, Pant: { Length: 40 } }.
+  @Prop({ type: Object, default: {} })
+  measurementsByType!: Record<string, Record<string, string | number>>;
 }
 
 export const CustomerSchema = SchemaFactory.createForClass(Customer);

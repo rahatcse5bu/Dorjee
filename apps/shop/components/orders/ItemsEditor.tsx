@@ -2,7 +2,15 @@
 
 import { Plus, Ruler, Scissors, Trash2 } from "lucide-react";
 import { useI18n } from "../../lib/i18n";
-import { measurementRows, Measurements, OrderItem, rowsToMeasurements } from "../../lib/orders";
+import {
+  Catalog,
+  Customer,
+  labelsForType,
+  measurementRows,
+  OrderItem,
+  rowsToMeasurements,
+  savedForType,
+} from "../../lib/orders";
 import { btnIcon, inputClass } from "../ui";
 
 export interface DraftItem {
@@ -12,17 +20,46 @@ export interface DraftItem {
   rows: Array<{ label: string; value: string }>;
 }
 
-export function newDraftItem(clothType: string, labels: string[], saved?: Measurements): DraftItem {
-  return { clothType, price: "", quantity: "1", rows: measurementRows(labels, saved) };
+/** A new item for a cloth type, pre-filled with the customer's saved measurements for it. */
+export function newDraftItem(catalog: Catalog, customer: Customer | null | undefined, clothType: string): DraftItem {
+  return {
+    clothType,
+    price: "",
+    quantity: "1",
+    rows: measurementRows(labelsForType(catalog, clothType), savedForType(catalog, customer, clothType)),
+  };
 }
 
-export function itemToDraft(item: OrderItem, labels: string[]): DraftItem {
+export function itemToDraft(item: OrderItem, catalog: Catalog): DraftItem {
   return {
     clothType: item.clothType,
-    price: String(item.price),
+    price: item.price === undefined ? "" : String(item.price),
     quantity: String(item.quantity || 1),
-    rows: measurementRows(labels, item.measurements),
+    rows: measurementRows(labelsForType(catalog, item.clothType), item.measurements),
   };
+}
+
+/**
+ * Switches an item to another cloth type: shows that type's measurements, keeping
+ * values the user typed for labels both types share and the item's custom rows.
+ */
+function retarget(item: DraftItem, clothType: string, catalog: Catalog, customer?: Customer | null): DraftItem {
+  const oldLabels = labelsForType(catalog, item.clothType);
+  const newLabels = labelsForType(catalog, clothType);
+  if (oldLabels.join("|") === newLabels.join("|")) return { ...item, clothType };
+
+  // Only values the user entered travel across; pre-filled ones are replaced by the
+  // new garment's saved values (a shirt's Length is not a pant's Length).
+  const oldSaved = savedForType(catalog, customer, item.clothType);
+  const typed = Object.fromEntries(
+    item.rows
+      .filter((r) => r.value.trim() !== "" && r.value !== String(oldSaved[r.label] ?? ""))
+      .map((r) => [r.label, r.value]),
+  );
+  const values = { ...savedForType(catalog, customer, clothType) };
+  for (const label of newLabels) if (typed[label] !== undefined) values[label] = typed[label];
+  const customRows = item.rows.filter((r) => !oldLabels.includes(r.label) && !newLabels.includes(r.label));
+  return { ...item, clothType, rows: [...measurementRows(newLabels, values), ...customRows] };
 }
 
 export type ItemValidationError = "orderForm.errItems" | "orderForm.errClothType" | "orderForm.errPrice" | "orderForm.errQty";
@@ -50,25 +87,27 @@ export function draftsTotal(drafts: DraftItem[]) {
 export function ItemsEditor({
   items,
   onChange,
-  clothTypes,
-  measurementLabels,
-  savedMeasurements,
+  catalog,
+  customer,
   prefillHint = true,
 }: {
   items: DraftItem[];
   onChange: (items: DraftItem[]) => void;
-  clothTypes: string[];
-  measurementLabels: string[];
-  /** The customer's saved measurements, used to pre-fill new items. */
-  savedMeasurements?: Measurements;
+  catalog: Catalog;
+  /** The order's customer; their saved measurements pre-fill new items. */
+  customer?: Customer | null;
   /** Shows the "filled from saved measurements" note; off when editing an existing order. */
   prefillHint?: boolean;
 }) {
   const { t, money } = useI18n();
-  const hasSaved = !!savedMeasurements && Object.keys(savedMeasurements).length > 0;
+  const clothTypes = catalog.clothTypes;
 
   function update(index: number, patch: Partial<DraftItem>) {
     onChange(items.map((item, i) => (i === index ? { ...item, ...patch } : item)));
+  }
+
+  function changeType(index: number, clothType: string) {
+    onChange(items.map((item, i) => (i === index ? retarget(item, clothType, catalog, customer) : item)));
   }
 
   function updateRow(index: number, rowIndex: number, patch: Partial<{ label: string; value: string }>) {
@@ -109,7 +148,7 @@ export function ItemsEditor({
                   <button
                     key={type}
                     type="button"
-                    onClick={() => update(index, { clothType: type })}
+                    onClick={() => changeType(index, type)}
                     className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
                       item.clothType === type
                         ? "border-teal bg-teal text-white"
@@ -130,7 +169,7 @@ export function ItemsEditor({
                   placeholder={t("orderForm.clothType")}
                   list="dorjee-cloth-types"
                   value={item.clothType}
-                  onChange={(e) => update(index, { clothType: e.target.value })}
+                  onChange={(e) => changeType(index, e.target.value)}
                 />
               </label>
               <label className="col-span-4 sm:col-span-2">
@@ -166,11 +205,11 @@ export function ItemsEditor({
                   <Ruler className="h-3.5 w-3.5" />
                   {t("orderForm.measurements")}
                 </span>
-                {prefillHint && hasSaved && <span className="text-[11px] font-medium text-teal">{t("orderForm.prefilled")}</span>}
+                {prefillHint && Object.keys(savedForType(catalog, customer, item.clothType)).length > 0 && <span className="text-[11px] font-medium text-teal">{t("orderForm.prefilled")}</span>}
               </div>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {item.rows.map((row, rowIndex) => {
-                  const isCatalogLabel = measurementLabels.includes(row.label);
+                  const isCatalogLabel = labelsForType(catalog, item.clothType).includes(row.label);
                   return (
                     <div key={rowIndex} className="relative">
                       {isCatalogLabel ? (
@@ -229,7 +268,7 @@ export function ItemsEditor({
       <button
         type="button"
         onClick={() =>
-          onChange([...items, newDraftItem(clothTypes[0] ?? "", measurementLabels, savedMeasurements)])
+          onChange([...items, newDraftItem(catalog, customer, clothTypes[0] ?? "")])
         }
         className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-teal/40 py-3 text-sm font-medium text-teal transition hover:border-teal hover:bg-teal/5"
       >

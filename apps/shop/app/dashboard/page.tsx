@@ -32,6 +32,7 @@ import {
   orderItems,
   STATUS_STYLE,
 } from "../../lib/orders";
+import { usePermissions } from "../../lib/permissions";
 import { useSession } from "../../lib/session";
 
 interface Subscription {
@@ -51,6 +52,9 @@ export default function DashboardPage() {
   const router = useRouter();
   const { t, money, num, date, lang } = useI18n();
   const { user, token, shopId } = useSession();
+  const { can } = usePermissions();
+  const canSeeMoney = can("payments") && can("reports");
+  const canSeeAmounts = can("payments");
   const [orders, setOrders] = useState<Order[]>([]);
   const [customerList, setCustomerList] = useState<Customer[]>([]);
   const [subscription, setSubscription] = useState<Subscription>({});
@@ -63,9 +67,11 @@ export default function DashboardPage() {
     void (async () => {
       try {
         const [orderResult, customerResult, sub] = await Promise.all([
-          apiRequest<Order[]>(`/shops/${shopId}/orders`, {}, token),
-          apiRequest<Customer[]>(`/shops/${shopId}/customers`, {}, token),
-          apiRequest<Subscription>(`/shops/${shopId}/subscription`, {}, token).catch(() => ({})),
+          apiRequest<Order[]>(`/shops/${shopId}/orders`, {}, token).catch(() => []),
+          apiRequest<Customer[]>(`/shops/${shopId}/customers`, {}, token).catch(() => []),
+          can("subscription")
+            ? apiRequest<Subscription>(`/shops/${shopId}/subscription`, {}, token).catch(() => ({}))
+            : Promise.resolve({}),
         ]);
         setOrders(orderResult);
         setCustomerList(customerResult);
@@ -193,8 +199,12 @@ export default function DashboardPage() {
 
   const kpis = [
     { label: t("dash.activeOrders"), value: num(m.open.length), desc: t("dash.activeOrdersDesc"), icon: Scissors },
-    { label: t("dash.outstanding"), value: money(m.outstanding), desc: t("dash.outstandingDesc", { n: m.withDueCount }), icon: Wallet, warn: m.outstanding > 0 },
-    { label: t("dash.collected"), value: money(m.collectedMonth), desc: t("dash.collectedDesc", { n: m.newThisMonth }), icon: TrendingUp },
+    ...(canSeeMoney
+      ? [
+          { label: t("dash.outstanding"), value: money(m.outstanding), desc: t("dash.outstandingDesc", { n: m.withDueCount }), icon: Wallet, warn: m.outstanding > 0 },
+          { label: t("dash.collected"), value: money(m.collectedMonth), desc: t("dash.collectedDesc", { n: m.newThisMonth }), icon: TrendingUp },
+        ]
+      : []),
   ];
 
   const scheduleGroups: Array<{ key: keyof typeof m.groups; label: TranslationKey; tone: string }> = [
@@ -267,10 +277,12 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
-          <Link href="/orders?new=1" className={btnPrimary}>
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">{t("dash.newOrder")}</span>
-          </Link>
+          {can("orders", "manage") && (
+            <Link href="/orders?new=1" className={btnPrimary}>
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">{t("dash.newOrder")}</span>
+            </Link>
+          )}
         </div>
       </div>
 
@@ -321,7 +333,7 @@ export default function DashboardPage() {
         {/* Main column */}
         <div className="min-w-0 space-y-5 lg:col-span-2">
           {/* KPIs */}
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className={`grid gap-3 ${kpis.length === 3 ? "sm:grid-cols-3" : ""}`}>
             {kpis.map((k) =>
               loading ? (
                 <Skeleton key={k.label} className="h-[104px]" />
@@ -339,6 +351,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Collections chart */}
+          {canSeeMoney && (
           <div className={`${cardClass} p-5`}>
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
@@ -397,6 +410,7 @@ export default function DashboardPage() {
               </figure>
             )}
           </div>
+          )}
 
           {/* Delivery schedule */}
           <div className={`${cardClass} overflow-hidden`}>
@@ -445,7 +459,7 @@ export default function DashboardPage() {
                                 </div>
                                 <div className="text-right text-xs">
                                   <p className="text-ink/60">{date(order.deliveryDate)}</p>
-                                  {due > 0 && <p className="font-semibold text-coral">{money(due)}</p>}
+                                  {canSeeAmounts && due > 0 && <p className="font-semibold text-coral">{money(due)}</p>}
                                 </div>
                                 <ChevronRight className="h-4 w-4 shrink-0 text-ink/25" />
                               </Link>
@@ -490,7 +504,8 @@ export default function DashboardPage() {
                         <p className="truncate text-sm font-medium text-ink hover:text-teal">{customer?.name ?? t("common.deletedCustomer")}</p>
                         <p className="text-xs text-ink/50">
                           {formatOrderNo(order)}
-                          {due > 0 ? <span className="font-semibold text-coral"> · {money(due)}</span> : <span className="text-emerald-700"> · {t("orders.fullyPaid")}</span>}
+                          {canSeeAmounts &&
+                            (due > 0 ? <span className="font-semibold text-coral"> · {money(due)}</span> : <span className="text-emerald-700"> · {t("orders.fullyPaid")}</span>)}
                         </p>
                       </Link>
                       {customer?.phone && (
@@ -510,7 +525,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Biggest dues */}
-          {!isTailor && (
+          {canSeeMoney && (
             <div className={`${cardClass} overflow-hidden`}>
               <div className="border-b border-ink/10 px-5 py-3.5">
                 <h2 className="flex items-center gap-2 font-semibold text-ink">

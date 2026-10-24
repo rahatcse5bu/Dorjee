@@ -4,9 +4,10 @@ import { FormEvent, useEffect, useState } from "react";
 import { LucideIcon, Plus, Save, X } from "lucide-react";
 import { apiRequest } from "../lib/api";
 import { TranslationKey, useI18n } from "../lib/i18n";
+import { usePermissions } from "../lib/permissions";
 import { errorMessage, useSession } from "../lib/session";
 import { useToast } from "./Toast";
-import { btnPrimary, cardClass, EmptyState, inputClass, PageHeader, Skeleton } from "./ui";
+import { Alert, btnPrimary, cardClass, EmptyState, inputClass, PageHeader, Skeleton } from "./ui";
 
 /** Edits one of the shop catalog's string lists (measurement labels or cloth types). */
 export function CatalogListEditor({
@@ -34,6 +35,7 @@ export function CatalogListEditor({
   const { t, num } = useI18n();
   const toast = useToast();
   const { token, shopId } = useSession();
+  const canEdit = usePermissions().can("catalog", "manage");
   const [values, setValues] = useState<string[]>([]);
   const [saved, setSaved] = useState<string[]>([]);
   const [draft, setDraft] = useState("");
@@ -88,7 +90,10 @@ export function CatalogListEditor({
     <section className="space-y-5">
       <PageHeader title={t(keys.title)} subtitle={t(keys.sub)} />
 
+      {!canEdit && <Alert kind="info">{t("perm.readOnlyPage")}</Alert>}
+
       <form onSubmit={onSave} className={`${cardClass} space-y-5 p-5 sm:p-6`}>
+        {canEdit && (
         <label className="block space-y-1.5">
           <span className="text-xs font-semibold text-ink/60">{t(keys.newLabel)}</span>
           <div className="flex gap-2">
@@ -114,8 +119,9 @@ export function CatalogListEditor({
             </button>
           </div>
         </label>
+        )}
 
-        {remaining.length > 0 && (
+        {canEdit && remaining.length > 0 && (
           <div className="space-y-2">
             <p className="text-xs font-semibold text-ink/50">{t("measurements.quickAdd")}</p>
             <div className="flex flex-wrap gap-2">
@@ -155,6 +161,7 @@ export function CatalogListEditor({
                 >
                   <Icon className="h-3 w-3 shrink-0 text-teal/60" />
                   {value}
+                  {canEdit && (
                   <button
                     type="button"
                     onClick={() => setValues((prev) => prev.filter((_, i) => i !== index))}
@@ -163,12 +170,14 @@ export function CatalogListEditor({
                   >
                     <X className="h-3 w-3" />
                   </button>
+                  )}
                 </span>
               ))}
             </div>
           )}
         </div>
 
+        {canEdit && (
         <div className="flex flex-wrap items-center justify-end gap-3 border-t border-ink/10 pt-4">
           {dirty && <span className="text-sm font-medium text-amber-700">{t("catalog.unsaved")}</span>}
           <button type="submit" className={btnPrimary} disabled={!dirty || saving}>
@@ -176,6 +185,7 @@ export function CatalogListEditor({
             {t(keys.save)}
           </button>
         </div>
+        )}
       </form>
     </section>
   );

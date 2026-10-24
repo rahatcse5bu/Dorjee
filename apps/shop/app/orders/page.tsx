@@ -22,6 +22,7 @@ import {
   payable,
   StaffMember,
 } from "../../lib/orders";
+import { usePermissions } from "../../lib/permissions";
 import { errorMessage, useSession } from "../../lib/session";
 
 type StatusTab = "active" | "all" | (typeof ORDER_STATUSES)[number];
@@ -31,6 +32,9 @@ export default function OrdersPage() {
   const toast = useToast();
   const { t, money, num } = useI18n();
   const { user, token, shopId } = useSession();
+  const { can } = usePermissions();
+  const canCreate = can("orders", "manage");
+  const canSeeAmounts = can("payments");
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [customers, setCustomers] = useState<Record<string, Customer>>({});
@@ -49,7 +53,7 @@ export default function OrdersPage() {
     try {
       const [orderResult, customerResult, staffResult] = await Promise.all([
         apiRequest<Order[]>(`/shops/${shopId}/orders`, {}, token),
-        apiRequest<Customer[]>(`/shops/${shopId}/customers`, {}, token),
+        apiRequest<Customer[]>(`/shops/${shopId}/customers`, {}, token).catch(() => []),
         apiRequest<StaffMember[]>(`/shops/${shopId}/staff`, {}, token).catch(() => []),
       ]);
       setOrders(orderResult);
@@ -118,7 +122,7 @@ export default function OrdersPage() {
   ];
 
   const toggles = [
-    { on: onlyDue, set: setOnlyDue, label: t("orders.filterDue") },
+    ...(canSeeAmounts ? [{ on: onlyDue, set: setOnlyDue, label: t("orders.filterDue") }] : []),
     { on: onlyOverdue, set: setOnlyOverdue, label: t("orders.filterOverdue") },
     ...(Object.keys(staff).length > 1 ? [{ on: onlyMine, set: setOnlyMine, label: t("orders.filterMine") }] : []),
   ];
@@ -129,10 +133,12 @@ export default function OrdersPage() {
         title={t("orders.title")}
         subtitle={t("orders.sub")}
         actions={
-          <button type="button" className={btnPrimary} onClick={() => setShowNew(true)}>
-            <Plus className="h-4 w-4" />
-            {t("orders.new")}
-          </button>
+          canCreate ? (
+            <button type="button" className={btnPrimary} onClick={() => setShowNew(true)}>
+              <Plus className="h-4 w-4" />
+              {t("orders.new")}
+            </button>
+          ) : undefined
         }
       />
 
@@ -203,7 +209,7 @@ export default function OrdersPage() {
             icon={ClipboardList}
             title={orders.length === 0 ? t("orders.empty") : t("orders.emptyFiltered")}
             action={
-              orders.length === 0 ? (
+              orders.length === 0 && canCreate ? (
                 <button type="button" className={btnPrimary} onClick={() => setShowNew(true)}>
                   <Plus className="h-4 w-4" />
                   {t("orders.new")}
@@ -222,8 +228,8 @@ export default function OrdersPage() {
                     <th className="px-4 py-3">{t("orders.col.customer")}</th>
                     <th className="px-4 py-3">{t("orders.col.items")}</th>
                     <th className="px-4 py-3">{t("orders.col.delivery")}</th>
-                    <th className="px-4 py-3 text-right">{t("orders.col.total")}</th>
-                    <th className="px-4 py-3 text-right">{t("orders.col.due")}</th>
+                    {canSeeAmounts && <th className="px-4 py-3 text-right">{t("orders.col.total")}</th>}
+                    {canSeeAmounts && <th className="px-4 py-3 text-right">{t("orders.col.due")}</th>}
                     <th className="px-4 py-3">{t("orders.col.status")}</th>
                     <th className="w-8 px-2 py-3" />
                   </tr>
@@ -256,14 +262,16 @@ export default function OrdersPage() {
                         <td className="px-4 py-3">
                           <DeliveryLabel order={order} />
                         </td>
-                        <td className="px-4 py-3 text-right font-medium text-ink">{money(payable(order))}</td>
-                        <td className="px-4 py-3 text-right">
-                          {due > 0 ? (
-                            <span className="font-semibold text-coral">{money(due)}</span>
-                          ) : (
-                            <span className="text-xs font-medium text-emerald-700">{t("orders.fullyPaid")}</span>
-                          )}
-                        </td>
+                        {canSeeAmounts && <td className="px-4 py-3 text-right font-medium text-ink">{money(payable(order))}</td>}
+                        {canSeeAmounts && (
+                          <td className="px-4 py-3 text-right">
+                            {due > 0 ? (
+                              <span className="font-semibold text-coral">{money(due)}</span>
+                            ) : (
+                              <span className="text-xs font-medium text-emerald-700">{t("orders.fullyPaid")}</span>
+                            )}
+                          </td>
+                        )}
                         <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                           <StatusSelect order={order} onChange={(s) => void changeStatus(order, s)} />
                         </td>
@@ -303,10 +311,12 @@ export default function OrdersPage() {
                           <CalendarClock className="h-3.5 w-3.5" />
                           <DeliveryLabel order={order} />
                         </span>
-                        <span>
-                          <span className="text-ink/60">{money(payable(order))}</span>
-                          {due > 0 && <span className="ml-2 font-semibold text-coral">{t("orders.col.due")} {money(due)}</span>}
-                        </span>
+                        {canSeeAmounts && (
+                          <span>
+                            <span className="text-ink/60">{money(payable(order))}</span>
+                            {due > 0 && <span className="ml-2 font-semibold text-coral">{t("orders.col.due")} {money(due)}</span>}
+                          </span>
+                        )}
                       </div>
                     </Link>
                   </li>

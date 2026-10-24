@@ -4,15 +4,20 @@ import { FormEvent, KeyboardEvent, useEffect, useMemo, useState } from "react";
 import { Check, PackagePlus, Search, UserPlus, X } from "lucide-react";
 import { apiRequest } from "../../lib/api";
 import { useI18n } from "../../lib/i18n";
-import { Customer, Measurements, Order, PAYMENT_METHODS, StaffMember } from "../../lib/orders";
+import {
+  Catalog,
+  Customer,
+  EMPTY_CATALOG,
+  Measurements,
+  normalizeCatalog,
+  Order,
+  PAYMENT_METHODS,
+  StaffMember,
+} from "../../lib/orders";
+import { usePermissions } from "../../lib/permissions";
 import { errorMessage, useSession } from "../../lib/session";
 import { Alert, btnPrimary, btnSecondary, Field, inputClass, Modal } from "../ui";
 import { DraftItem, draftsToItems, draftsTotal, ItemsEditor, newDraftItem } from "./ItemsEditor";
-
-interface Catalog {
-  clothTypes: string[];
-  measurementLabels: string[];
-}
 
 function defaultDeliveryDate() {
   const d = new Date();
@@ -33,9 +38,12 @@ export function NewOrderModal({
 }) {
   const { t, money, num } = useI18n();
   const { token, shopId } = useSession();
+  const { can } = usePermissions();
+  const canAddCustomers = can("customers", "manage");
+  const canTakePayments = can("payments", "manage");
 
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [catalog, setCatalog] = useState<Catalog>({ clothTypes: [], measurementLabels: [] });
+  const [catalog, setCatalog] = useState<Catalog>(EMPTY_CATALOG);
   const [staff, setStaff] = useState<StaffMember[]>([]);
 
   const [customer, setCustomer] = useState<Customer | null>(null);
@@ -69,7 +77,7 @@ export function NewOrderModal({
     setAdvance("");
     setAdvanceMethod("cash");
     setNotes("");
-    setSaveToProfile(true);
+    setSaveToProfile(can("customers", "manage"));
 
     void (async () => {
       try {
@@ -78,10 +86,7 @@ export function NewOrderModal({
           presetCustomer ? Promise.resolve([]) : apiRequest<Customer[]>(`/shops/${shopId}/customers`, {}, token),
           apiRequest<StaffMember[]>(`/shops/${shopId}/staff`, {}, token).catch(() => []),
         ]);
-        const nextCatalog = {
-          clothTypes: catalogResult.clothTypes ?? [],
-          measurementLabels: catalogResult.measurementLabels ?? [],
-        };
+        const nextCatalog = normalizeCatalog(catalogResult);
         setCatalog(nextCatalog);
         setCustomers(customerResult);
         setStaff(staffResult.filter((member) => member.active !== false));
@@ -105,7 +110,7 @@ export function NewOrderModal({
     setCustomer(next);
     setShowSuggestions(false);
     setActiveIndex(-1);
-    setItems([newDraftItem(cat.clothTypes[0] ?? "", cat.measurementLabels, next?.measurements)]);
+    setItems([newDraftItem(cat, next, cat.clothTypes[0] ?? "")]);
   }
 
   function onSearchKeyDown(e: KeyboardEvent<HTMLInputElement>) {
@@ -177,7 +182,7 @@ export function NewOrderModal({
             orderItems: parsed,
             amount: subtotal,
             discount: discountValue,
-            advance: advanceValue,
+            advance: canTakePayments ? advanceValue : 0,
             advanceMethod,
             deliveryDate: deliveryDate || undefined,
             assignedTo: assignedTo || undefined,
@@ -189,12 +194,18 @@ export function NewOrderModal({
       );
 
       if (saveToProfile) {
-        const merged: Measurements = { ...(customer.measurements ?? {}) };
-        for (const item of parsed) Object.assign(merged, item.measurements);
-        if (Object.keys(merged).length > 0) {
+        // Saved per cloth type, so a shirt's Length never overwrites a pant's.
+        const byType: Record<string, Measurements> = { ...(customer.measurementsByType ?? {}) };
+        let changed = false;
+        for (const item of parsed) {
+          if (Object.keys(item.measurements ?? {}).length === 0) continue;
+          byType[item.clothType] = { ...(byType[item.clothType] ?? {}), ...item.measurements };
+          changed = true;
+        }
+        if (changed) {
           await apiRequest(
             `/shops/${shopId}/customers/${customer._id}`,
-            { method: "PATCH", body: JSON.stringify({ measurements: merged }) },
+            { method: "PATCH", body: JSON.stringify({ measurementsByType: byType }) },
             token,
           ).catch(() => undefined);
         }
@@ -333,6 +344,7 @@ export function NewOrderModal({
                         </button>
                       ))
                     )}
+                    {canAddCustomers && (
                     <button
                       type="button"
                       onMouseDown={(e) => {
@@ -349,6 +361,7 @@ export function NewOrderModal({
                       <UserPlus className="h-4 w-4" />
                       {t("orderForm.newCustomer")}
                     </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -362,10 +375,10 @@ export function NewOrderModal({
               <ItemsEditor
                 items={items}
                 onChange={setItems}
-                clothTypes={catalog.clothTypes}
-                measurementLabels={catalog.measurementLabels}
-                savedMeasurements={customer.measurements}
+                catalog={catalog}
+                customer={customer}
               />
+              {canAddCustomers && (
               <label className="flex items-center gap-2 pt-1 text-sm text-ink/70">
                 <input
                   type="checkbox"
@@ -375,6 +388,7 @@ export function NewOrderModal({
                 />
                 {t("orderForm.saveToProfile")}
               </label>
+              )}
             </section>
           )}
         </div>
@@ -425,6 +439,7 @@ export function NewOrderModal({
                 onChange={(e) => setDiscount(e.target.value)}
               />
             </Field>
+            {canTakePayments && (
             <div className="grid grid-cols-[1fr_auto] gap-2">
               <Field label={t("orderForm.advance")}>
                 <input
@@ -451,6 +466,7 @@ export function NewOrderModal({
                 </select>
               </Field>
             </div>
+            )}
 
             <dl className="space-y-1.5 border-t border-ink/10 pt-3 text-sm">
               <div className="flex justify-between text-ink/60">

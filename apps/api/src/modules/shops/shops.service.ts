@@ -14,8 +14,13 @@ export class ShopsService {
     return this.shopModel.create({
       ...dto,
       trialEndsAt,
-      measurementLabels: ["Chest", "Waist", "Length", "Shoulder"],
+      measurementLabels: ["Chest", "Shoulder", "Sleeve", "Collar", "Length", "Waist", "Hip", "Inseam"],
       clothTypes: ["Shirt", "Pant", "Panjabi"],
+      clothTypeMeasurements: {
+        Shirt: ["Chest", "Shoulder", "Sleeve", "Collar", "Length"],
+        Pant: ["Waist", "Hip", "Inseam", "Length"],
+        Panjabi: ["Chest", "Shoulder", "Sleeve", "Collar", "Length"],
+      },
     });
   }
 

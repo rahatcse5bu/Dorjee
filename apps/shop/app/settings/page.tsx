@@ -3,9 +3,10 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Mail, MapPin, Phone, Save, Settings2, Store, User } from "lucide-react";
 import { useToast } from "../../components/Toast";
-import { btnPrimary, cardClass, inputClass, PageHeader, Skeleton } from "../../components/ui";
+import { Alert, btnPrimary, cardClass, inputClass, PageHeader, Skeleton } from "../../components/ui";
 import { apiRequest } from "../../lib/api";
 import { useI18n } from "../../lib/i18n";
+import { usePermissions } from "../../lib/permissions";
 import { errorMessage, useSession } from "../../lib/session";
 
 interface ShopProfile {
@@ -22,6 +23,7 @@ export default function SettingsPage() {
   const { t } = useI18n();
   const toast = useToast();
   const { token, shopId } = useSession();
+  const canEdit = usePermissions().can("settings", "manage");
   const [shop, setShop] = useState<ShopProfile>(emptyShop);
   const [saved, setSaved] = useState<ShopProfile>(emptyShop);
   const [loading, setLoading] = useState(true);
@@ -72,8 +74,10 @@ export default function SettingsPage() {
   return (
     <section className="space-y-5">
       <PageHeader title={t("settings.title")} subtitle={t("settings.sub")} />
+      {!canEdit && <Alert kind="info">{t("perm.readOnlyPage")}</Alert>}
 
       <form onSubmit={onSubmit} className={`${cardClass} space-y-5 p-5 sm:p-6`}>
+        <fieldset disabled={!canEdit} className="space-y-5">
         <div className="flex items-center gap-2.5 border-b border-ink/10 pb-4">
           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-teal/10 text-teal">
             <Settings2 className="h-4 w-4" />
@@ -120,6 +124,8 @@ export default function SettingsPage() {
           />
         </label>
 
+        </fieldset>
+        {canEdit && (
         <div className="flex flex-wrap items-center justify-end gap-3 border-t border-ink/10 pt-4">
           {dirty && <span className="text-sm font-medium text-amber-700">{t("catalog.unsaved")}</span>}
           <button type="submit" className={btnPrimary} disabled={!dirty || saving}>
@@ -127,6 +133,7 @@ export default function SettingsPage() {
             {t("common.saveChanges")}
           </button>
         </div>
+        )}
       </form>
     </section>
   );

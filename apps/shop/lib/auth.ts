@@ -48,8 +48,3 @@ export function clearShopAuth(): void {
   window.localStorage.removeItem(SHOP_TOKEN_KEY);
   window.localStorage.removeItem(SHOP_USER_KEY);
 }
-
-/** Owners and managers can change shop setup and manage staff. */
-export function canManageShop(role?: string) {
-  return role === "shop_owner" || role === "manager";
-}

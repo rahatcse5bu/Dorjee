@@ -8,6 +8,7 @@ import { btnPrimary, btnSecondary } from "../../../../components/ui";
 import { apiRequest } from "../../../../lib/api";
 import { useI18n } from "../../../../lib/i18n";
 import { Customer, dueAmount, formatOrderNo, Order, orderItems, payable } from "../../../../lib/orders";
+import { usePermissions } from "../../../../lib/permissions";
 import { useSession } from "../../../../lib/session";
 
 interface Shop {
@@ -22,6 +23,8 @@ export default function PrintMemoPage() {
   const orderId = params?.id ?? "";
   const { t, money, date, num } = useI18n();
   const { token, shopId } = useSession();
+  const { can } = usePermissions();
+  const showCustomerCopy = can("payments");
   const [order, setOrder] = useState<Order | null>(null);
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [shop, setShop] = useState<Shop | null>(null);
@@ -108,7 +111,9 @@ export default function PrintMemoPage() {
       </div>
 
       <div className="mx-auto max-w-[210mm] bg-white p-8 text-ink shadow-sm print:max-w-none print:p-0 print:shadow-none">
-        {/* Customer copy */}
+        {/* Customer copy (has prices, so only for users who can see money) */}
+        {showCustomerCopy && (
+        <>
         <section>
           {header(t("memo.customerCopy"))}
           {meta}
@@ -169,6 +174,8 @@ export default function PrintMemoPage() {
         <div className="relative my-8 border-t-2 border-dashed border-ink/30">
           <Scissors className="absolute -top-3 left-0 h-5 w-5 bg-white text-ink/40" />
         </div>
+        </>
+        )}
 
         {/* Workshop copy: measurements, no prices */}
         <section>

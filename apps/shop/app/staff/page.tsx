@@ -17,7 +17,8 @@ import {
   Skeleton,
 } from "../../components/ui";
 import { apiRequest } from "../../lib/api";
-import { canManageShop } from "../../lib/auth";
+import { RolePermissionsMatrix } from "../../components/RolePermissionsMatrix";
+import { usePermissions } from "../../lib/permissions";
 import { TranslationKey, useI18n } from "../../lib/i18n";
 import { OPEN_STATUSES, Order, StaffMember } from "../../lib/orders";
 import { errorMessage, useSession } from "../../lib/session";
@@ -39,6 +40,9 @@ export default function StaffPage() {
   const toast = useToast();
   const { t, num } = useI18n();
   const { user, token, shopId } = useSession();
+  const canManageStaff = usePermissions().can("staff", "manage");
+  const isShopOwner = user?.role === "shop_owner";
+  const [tab, setTab] = useState<"team" | "roles">("team");
 
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -53,7 +57,7 @@ export default function StaffPage() {
     try {
       const [staffResult, orderResult] = await Promise.all([
         apiRequest<StaffMember[]>(`/shops/${shopId}/staff`, {}, token),
-        apiRequest<Order[]>(`/shops/${shopId}/orders`, {}, token),
+        apiRequest<Order[]>(`/shops/${shopId}/orders`, {}, token).catch(() => []),
       ]);
       setStaff(staffResult);
       setOrders(orderResult);
@@ -173,10 +177,6 @@ export default function StaffPage() {
     }
   }
 
-  if (!canManageShop(user?.role)) {
-    return <EmptyState icon={UserCog} title={t("common.somethingWrong")} />;
-  }
-
   const team = staff.filter((m) => m.role !== "shop_owner");
   const owners = staff.filter((m) => m.role === "shop_owner");
 
@@ -186,13 +186,36 @@ export default function StaffPage() {
         title={t("staff.title")}
         subtitle={t("staff.sub")}
         actions={
-          <button type="button" className={btnPrimary} onClick={openCreate}>
-            <UserPlus className="h-4 w-4" />
-            {t("staff.add")}
-          </button>
+          canManageStaff && tab === "team" ? (
+            <button type="button" className={btnPrimary} onClick={openCreate}>
+              <UserPlus className="h-4 w-4" />
+              {t("staff.add")}
+            </button>
+          ) : undefined
         }
       />
 
+      <div className="flex gap-1 border-b border-ink/10" role="tablist">
+        {(["team", "roles"] as const).map((key) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            aria-selected={tab === key}
+            onClick={() => setTab(key)}
+            className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-semibold transition ${
+              tab === key ? "border-teal text-teal" : "border-transparent text-ink/55 hover:text-ink"
+            }`}
+          >
+            {t(key === "team" ? "perm.tab.team" : "perm.tab.roles")}
+          </button>
+        ))}
+      </div>
+
+      {tab === "roles" ? (
+        <RolePermissionsMatrix />
+      ) : (
+      <>
       <div className={`${cardClass} overflow-hidden`}>
         {loading ? (
           <div className="space-y-3 p-5">
@@ -206,7 +229,8 @@ export default function StaffPage() {
               const isOwner = member.role === "shop_owner";
               const isSelf = member._id === user?.sub;
               const disabled = member.active === false;
-              const canEdit = !isOwner && !(user?.role === "manager" && member.role === "manager" && !isSelf);
+              // Mirrors the API: only the owner may change managers (a manager may edit themselves).
+              const canEdit = canManageStaff && !isOwner && (isShopOwner || member.role !== "manager" || isSelf);
               return (
                 <li key={member._id} className={`flex flex-wrap items-center gap-4 px-5 py-4 ${disabled ? "opacity-60" : ""}`}>
                   <span
@@ -283,14 +307,18 @@ export default function StaffPage() {
             icon={UserCog}
             title={t("staff.empty")}
             action={
-              <button type="button" className={btnPrimary} onClick={openCreate}>
-                <UserPlus className="h-4 w-4" />
-                {t("staff.add")}
-              </button>
+              canManageStaff ? (
+                <button type="button" className={btnPrimary} onClick={openCreate}>
+                  <UserPlus className="h-4 w-4" />
+                  {t("staff.add")}
+                </button>
+              ) : undefined
             }
           />
         )}
       </div>
+      </>
+      )}
 
       <Modal
         open={modalOpen}
@@ -342,7 +370,7 @@ export default function StaffPage() {
           <fieldset>
             <legend className="mb-1.5 text-xs font-semibold text-ink/60">{t("staff.role")}</legend>
             <div className="grid gap-2 sm:grid-cols-2">
-              {STAFF_ROLES.filter((role) => user?.role === "shop_owner" || role !== "manager" || editing?.role === "manager").map((role) => (
+              {STAFF_ROLES.filter((role) => isShopOwner || role !== "manager" || editing?.role === "manager").map((role) => (
                 <label
                   key={role}
                   className={`flex cursor-pointer items-start gap-2.5 rounded-xl border px-3 py-2.5 transition ${

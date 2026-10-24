@@ -5,8 +5,47 @@ export interface Customer {
   name: string;
   phone: string;
   address?: string;
+  /** Legacy flat measurements; used as a fallback for pre-filling. */
   measurements?: Measurements;
+  measurementsByType?: Record<string, Measurements>;
   createdAt?: string;
+}
+
+export interface Catalog {
+  clothTypes: string[];
+  measurementLabels: string[];
+  /** Measurement labels per cloth type; a type without an entry uses every label. */
+  clothTypeMeasurements: Record<string, string[]>;
+}
+
+export const EMPTY_CATALOG: Catalog = { clothTypes: [], measurementLabels: [], clothTypeMeasurements: {} };
+
+export function normalizeCatalog(raw: Partial<Catalog> | null | undefined): Catalog {
+  return {
+    clothTypes: raw?.clothTypes ?? [],
+    measurementLabels: raw?.measurementLabels ?? [],
+    clothTypeMeasurements: raw?.clothTypeMeasurements ?? {},
+  };
+}
+
+/** The measurement labels to take for a cloth type, in master-list order. */
+export function labelsForType(catalog: Catalog, clothType: string): string[] {
+  const mapped = catalog.clothTypeMeasurements[clothType];
+  if (!mapped || mapped.length === 0) return catalog.measurementLabels;
+  return catalog.measurementLabels.filter((label) => mapped.includes(label));
+}
+
+/**
+ * A customer's saved measurements for a cloth type: values saved for that type,
+ * falling back to legacy flat values for the type's own labels.
+ */
+export function savedForType(catalog: Catalog, customer: Customer | null | undefined, clothType: string): Measurements {
+  if (!customer) return {};
+  const labels = labelsForType(catalog, clothType);
+  const legacy = Object.fromEntries(
+    Object.entries(customer.measurements ?? {}).filter(([label]) => labels.includes(label)),
+  );
+  return { ...legacy, ...(customer.measurementsByType?.[clothType] ?? {}) };
 }
 
 export interface OrderItem {
@@ -31,7 +70,9 @@ export interface Order {
   customerId: string;
   clothType?: string;
   orderItems?: OrderItem[];
+  measurements?: Measurements;
   status: string;
+  /** Absent when the user lacks permission to see payments. */
   amount: number;
   discount?: number;
   paidAmount?: number;
@@ -81,11 +122,11 @@ export function formatOrderNo(order: Pick<Order, "_id" | "orderNo">) {
 
 export function orderItems(order: Order): OrderItem[] {
   if (order.orderItems?.length) return order.orderItems;
-  return [{ clothType: order.clothType ?? "—", price: order.amount, quantity: 1, measurements: {} }];
+  return [{ clothType: order.clothType ?? "—", price: order.amount ?? 0, quantity: 1, measurements: order.measurements ?? {} }];
 }
 
 export function payable(order: Order) {
-  return Math.max(order.amount - (order.discount ?? 0), 0);
+  return Math.max((order.amount ?? 0) - (order.discount ?? 0), 0);
 }
 
 export function dueAmount(order: Order) {

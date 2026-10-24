@@ -6,6 +6,7 @@ import { useToast } from "../../components/Toast";
 import { Alert, btnPrimary, cardClass, EmptyState, Field, inputClass, PageHeader } from "../../components/ui";
 import { apiRequest } from "../../lib/api";
 import { TranslationKey, useI18n } from "../../lib/i18n";
+import { usePermissions } from "../../lib/permissions";
 import { errorMessage, useSession } from "../../lib/session";
 
 interface Subscription {
@@ -45,6 +46,7 @@ export default function SubscriptionPage() {
   const { t, money, date } = useI18n();
   const toast = useToast();
   const { token, shopId } = useSession();
+  const canPay = usePermissions().can("subscription", "manage");
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [method, setMethod] = useState<"bkash_manual" | "nagad_manual">("bkash_manual");
@@ -137,6 +139,7 @@ export default function SubscriptionPage() {
       </div>
 
       {/* Submit payment */}
+      {canPay && (
       <form onSubmit={onSubmit} className={`${cardClass} space-y-4 p-5 sm:p-6`}>
         <div className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-brass/10 text-brass">
@@ -185,6 +188,7 @@ export default function SubscriptionPage() {
           </button>
         </div>
       </form>
+      )}
 
       {/* Payment history */}
       <div className={`${cardClass} overflow-hidden`}>

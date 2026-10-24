@@ -2,7 +2,7 @@
 
 import { ReactNode, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { AlertCircle, CheckCircle2, LucideIcon, X } from "lucide-react";
+import { AlertCircle, CheckCircle2, Info, LucideIcon, X } from "lucide-react";
 import { useI18n } from "../lib/i18n";
 import { STATUS_STYLE } from "../lib/orders";
 
@@ -66,16 +66,17 @@ export function Field({
   );
 }
 
-export function Alert({ kind = "error", children }: { kind?: "error" | "success"; children: ReactNode }) {
-  const Icon = kind === "error" ? AlertCircle : CheckCircle2;
+export function Alert({ kind = "error", children }: { kind?: "error" | "success" | "info"; children: ReactNode }) {
+  const styles = {
+    error: { icon: AlertCircle, className: "border-red-200 bg-red-50 text-red-700" },
+    success: { icon: CheckCircle2, className: "border-emerald-200 bg-emerald-50 text-emerald-700" },
+    info: { icon: Info, className: "border-ink/10 bg-ink/[0.03] text-ink/70" },
+  }[kind];
+  const Icon = styles.icon;
   return (
     <div
       role={kind === "error" ? "alert" : "status"}
-      className={`flex items-start gap-2 rounded-xl border px-4 py-3 text-sm ${
-        kind === "error"
-          ? "border-red-200 bg-red-50 text-red-700"
-          : "border-emerald-200 bg-emerald-50 text-emerald-700"
-      }`}
+      className={`flex items-start gap-2 rounded-xl border px-4 py-3 text-sm ${styles.className}`}
     >
       <Icon className="mt-0.5 h-4 w-4 shrink-0" />
       <span>{children}</span>

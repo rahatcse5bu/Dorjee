@@ -15,29 +15,30 @@ import {
   UserCog,
   Users,
 } from "lucide-react";
-import { canManageShop, clearShopAuth, getShopUser } from "../lib/auth";
+import { clearShopAuth, getShopUser } from "../lib/auth";
 import { TranslationKey, useI18n } from "../lib/i18n";
+import { PermissionModule, usePermissions } from "../lib/permissions";
 
 interface NavItem {
   href: string;
   label: TranslationKey;
   icon: LucideIcon;
-  /** Restricts the link to these roles; everyone sees it when omitted. */
-  roles?: (role?: string) => boolean;
+  /** Module the user needs view access to; everyone sees the link when omitted. */
+  module?: PermissionModule;
 }
 
 const mainNav: NavItem[] = [
   { href: "/dashboard", label: "nav.dashboard", icon: LayoutDashboard },
-  { href: "/orders", label: "nav.orders", icon: ClipboardList },
-  { href: "/customers", label: "nav.customers", icon: Users },
-  { href: "/staff", label: "nav.staff", icon: UserCog, roles: canManageShop },
+  { href: "/orders", label: "nav.orders", icon: ClipboardList, module: "orders" },
+  { href: "/customers", label: "nav.customers", icon: Users, module: "customers" },
+  { href: "/staff", label: "nav.staff", icon: UserCog, module: "staff" },
 ];
 
 const setupNav: NavItem[] = [
-  { href: "/measurements", label: "nav.measurements", icon: Ruler, roles: canManageShop },
-  { href: "/cloth-types", label: "nav.clothTypes", icon: Scissors, roles: canManageShop },
-  { href: "/settings", label: "nav.settings", icon: Settings2, roles: canManageShop },
-  { href: "/subscription", label: "nav.subscription", icon: CreditCard, roles: (role) => role === "shop_owner" },
+  { href: "/measurements", label: "nav.measurements", icon: Ruler, module: "catalog" },
+  { href: "/cloth-types", label: "nav.clothTypes", icon: Scissors, module: "catalog" },
+  { href: "/settings", label: "nav.settings", icon: Settings2, module: "settings" },
+  { href: "/subscription", label: "nav.subscription", icon: CreditCard, module: "subscription" },
 ];
 
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
@@ -45,13 +46,14 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const router = useRouter();
   const { t, lang, setLang } = useI18n();
   const user = getShopUser();
+  const { can } = usePermissions();
 
   function handleLogout() {
     clearShopAuth();
     router.push("/login");
   }
 
-  const visible = (items: NavItem[]) => items.filter((item) => !item.roles || item.roles(user?.role));
+  const visible = (items: NavItem[]) => items.filter((item) => !item.module || can(item.module));
   const setupItems = visible(setupNav);
 
   function renderLink(item: NavItem) {

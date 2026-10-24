@@ -23,12 +23,19 @@ import {
   Customer,
   dueAmount,
   formatOrderNo,
+  Catalog,
+  EMPTY_CATALOG,
+  labelsForType,
+  Measurements,
   measurementRows,
+  normalizeCatalog,
   Order,
   orderItems,
   payable,
   rowsToMeasurements,
+  savedForType,
 } from "../../../lib/orders";
+import { usePermissions } from "../../../lib/permissions";
 import { errorMessage, useSession } from "../../../lib/session";
 
 export default function CustomerProfilePage() {
@@ -38,11 +45,19 @@ export default function CustomerProfilePage() {
   const toast = useToast();
   const { t, money, num, date } = useI18n();
   const { token, shopId } = useSession();
+  const { can } = usePermissions();
+  const canManage = can("customers", "manage");
+  const canCreateOrders = can("orders", "manage");
+  const canSeeOrders = can("orders");
+  const canSeeAmounts = can("payments");
 
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [labels, setLabels] = useState<string[]>([]);
-  const [rows, setRows] = useState<Array<{ label: string; value: string }>>([]);
+  const [catalog, setCatalog] = useState<Catalog>(EMPTY_CATALOG);
+  // Editable measurement rows for each garment; one garment is shown at a time.
+  const [rowsByType, setRowsByType] = useState<Record<string, Row[]>>({});
+  const [activeType, setActiveType] = useState("");
+  const [baseline, setBaseline] = useState("");
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [savingMeasurements, setSavingMeasurements] = useState(false);
@@ -54,13 +69,21 @@ export default function CustomerProfilePage() {
       try {
         const [customerResult, orderResult, catalog] = await Promise.all([
           apiRequest<Customer>(`/shops/${shopId}/customers/${customerId}`, {}, token),
-          apiRequest<Order[]>(`/shops/${shopId}/orders?customerId=${encodeURIComponent(customerId)}`, {}, token),
-          apiRequest<{ measurementLabels: string[] }>(`/shops/${shopId}/catalog`, {}, token),
+          apiRequest<Order[]>(`/shops/${shopId}/orders?customerId=${encodeURIComponent(customerId)}`, {}, token).catch(() => []),
+          apiRequest<Partial<Catalog>>(`/shops/${shopId}/catalog`, {}, token),
         ]);
         setCustomer(customerResult);
         setOrders(orderResult);
-        setLabels(catalog.measurementLabels ?? []);
-        setRows(measurementRows(catalog.measurementLabels ?? [], customerResult.measurements));
+        const cat = normalizeCatalog(catalog);
+        const initial = buildRows(cat, customerResult);
+        setCatalog(cat);
+        setRowsByType(initial);
+        setBaseline(JSON.stringify(rowsToByType(initial)));
+        setActiveType(
+          cat.clothTypes.find((type) => Object.keys(customerResult.measurementsByType?.[type] ?? {}).length > 0) ??
+            cat.clothTypes[0] ??
+            "",
+        );
       } catch {
         setNotFound(true);
       } finally {
@@ -78,19 +101,30 @@ export default function CustomerProfilePage() {
     [orders],
   );
 
-  const savedMeasurements = JSON.stringify(customer?.measurements ?? {});
-  const measurementsDirty = JSON.stringify(rowsToMeasurements(rows)) !== savedMeasurements;
+  const rows = rowsByType[activeType] ?? [];
+  const labels = labelsForType(catalog, activeType);
+  const setRows = (update: (rows: Row[]) => Row[]) =>
+    setRowsByType((prev) => ({ ...prev, [activeType]: update(prev[activeType] ?? []) }));
+  const measurementsDirty = JSON.stringify(rowsToByType(rowsByType)) !== baseline;
 
   async function saveMeasurements() {
     if (!customer) return;
     setSavingMeasurements(true);
     try {
+      // Garments outside the current catalog keep their saved values untouched.
+      const edited = rowsToByType(rowsByType);
+      const measurementsByType: Record<string, Measurements> = { ...(customer.measurementsByType ?? {}) };
+      for (const type of catalog.clothTypes) {
+        if (edited[type]) measurementsByType[type] = edited[type];
+        else delete measurementsByType[type];
+      }
       const updated = await apiRequest<Customer>(
         `/shops/${shopId}/customers/${customer._id}`,
-        { method: "PATCH", body: JSON.stringify({ measurements: rowsToMeasurements(rows) }) },
+        { method: "PATCH", body: JSON.stringify({ measurementsByType }) },
         token,
       );
       setCustomer(updated);
+      setBaseline(JSON.stringify(edited));
       toast(t("customer.measurementsSaved"));
     } catch (err) {
       toast(errorMessage(err, t("common.somethingWrong")), "error");
@@ -131,8 +165,12 @@ export default function CustomerProfilePage() {
 
   const stats = [
     { label: t("customer.totalOrders"), value: num(orders.length), tone: "text-ink" },
-    { label: t("customer.totalSpent"), value: money(totals.billed), tone: "text-ink" },
-    { label: t("customer.outstanding"), value: money(totals.due), tone: totals.due > 0 ? "text-coral" : "text-emerald-700" },
+    ...(canSeeAmounts
+      ? [
+          { label: t("customer.totalSpent"), value: money(totals.billed), tone: "text-ink" },
+          { label: t("customer.outstanding"), value: money(totals.due), tone: totals.due > 0 ? "text-coral" : "text-emerald-700" },
+        ]
+      : []),
   ];
 
   return (
@@ -167,20 +205,24 @@ export default function CustomerProfilePage() {
               <Phone className="h-4 w-4" />
               {t("customer.call")}
             </a>
-            <button type="button" className={btnSecondary} onClick={() => setEditOpen(true)}>
-              <Pencil className="h-4 w-4" />
-              {t("common.edit")}
-            </button>
-            <button type="button" className={btnPrimary} onClick={() => setNewOrderOpen(true)}>
-              <Plus className="h-4 w-4" />
-              {t("orders.new")}
-            </button>
+            {canManage && (
+              <button type="button" className={btnSecondary} onClick={() => setEditOpen(true)}>
+                <Pencil className="h-4 w-4" />
+                {t("common.edit")}
+              </button>
+            )}
+            {canCreateOrders && (
+              <button type="button" className={btnPrimary} onClick={() => setNewOrderOpen(true)}>
+                <Plus className="h-4 w-4" />
+                {t("orders.new")}
+              </button>
+            )}
           </div>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className={`grid gap-3 ${stats.length === 3 ? "grid-cols-3" : "grid-cols-1 sm:w-1/3"}`}>
         {stats.map((s) => (
           <div key={s.label} className={`${cardClass} px-4 py-3.5`}>
             <p className="text-xs font-medium text-ink/50">{s.label}</p>
@@ -191,6 +233,7 @@ export default function CustomerProfilePage() {
 
       <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
         {/* Order history */}
+        {canSeeOrders && (
         <div className={`${cardClass} overflow-hidden`}>
           <div className="border-b border-ink/10 px-5 py-3.5">
             <h2 className="flex items-center gap-2 font-semibold text-ink">
@@ -203,10 +246,12 @@ export default function CustomerProfilePage() {
               icon={ClipboardList}
               title={t("customer.noOrders")}
               action={
-                <button type="button" className={btnPrimary} onClick={() => setNewOrderOpen(true)}>
-                  <Plus className="h-4 w-4" />
-                  {t("customer.newOrder", { name: customer.name })}
-                </button>
+                canCreateOrders ? (
+                  <button type="button" className={btnPrimary} onClick={() => setNewOrderOpen(true)}>
+                    <Plus className="h-4 w-4" />
+                    {t("customer.newOrder", { name: customer.name })}
+                  </button>
+                ) : undefined
               }
             />
           ) : (
@@ -223,10 +268,12 @@ export default function CustomerProfilePage() {
                         </p>
                         <p className="truncate text-sm text-ink/60">{orderItems(order).map((i) => i.clothType).join(", ")}</p>
                       </div>
-                      <div className="text-right text-sm">
-                        <p className="font-medium text-ink">{money(payable(order))}</p>
-                        {due > 0 && <p className="text-xs font-semibold text-coral">{t("orders.col.due")} {money(due)}</p>}
-                      </div>
+                      {canSeeAmounts && (
+                        <div className="text-right text-sm">
+                          <p className="font-medium text-ink">{money(payable(order))}</p>
+                          {due > 0 && <p className="text-xs font-semibold text-coral">{t("orders.col.due")} {money(due)}</p>}
+                        </div>
+                      )}
                       <StatusBadge status={order.status} />
                     </Link>
                   </li>
@@ -235,6 +282,7 @@ export default function CustomerProfilePage() {
             </ul>
           )}
         </div>
+        )}
 
         {/* Measurements */}
         <div className={`${cardClass} h-fit p-5`}>
@@ -243,6 +291,29 @@ export default function CustomerProfilePage() {
             {t("customer.measurements")}
           </h2>
           <p className="mt-0.5 text-xs text-ink/50">{t("customer.measurementsSub")}</p>
+          {catalog.clothTypes.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-1.5" role="tablist" aria-label={t("customer.garment")}>
+              {catalog.clothTypes.map((type) => {
+                const hasValues = (rowsByType[type] ?? []).some((r) => r.value.trim() !== "");
+                const active = type === activeType;
+                return (
+                  <button
+                    key={type}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setActiveType(type)}
+                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition ${
+                      active ? "bg-ink text-white" : "bg-white text-ink/65 ring-1 ring-inset ring-ink/15 hover:text-ink"
+                    }`}
+                  >
+                    {type}
+                    {hasValues && <span className={`h-1.5 w-1.5 rounded-full ${active ? "bg-emerald-300" : "bg-emerald-500"}`} />}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           <div className="mt-4 grid grid-cols-2 gap-2.5">
             {rows.map((row, index) => {
               const fixed = labels.includes(row.label);
@@ -254,6 +325,7 @@ export default function CustomerProfilePage() {
                     <input
                       className="mb-1 w-full border-0 border-b border-dashed border-ink/20 bg-transparent p-0 text-xs font-medium text-ink/55 focus:ring-0"
                       placeholder={t("orderForm.measurementLabel")}
+                      disabled={!canManage}
                       value={row.label}
                       onChange={(e) => setRows((r) => r.map((x, i) => (i === index ? { ...x, label: e.target.value } : x)))}
                     />
@@ -262,11 +334,12 @@ export default function CustomerProfilePage() {
                     <input
                       className={`${inputClass} py-2`}
                       inputMode="decimal"
+                      disabled={!canManage}
                       aria-label={row.label || t("orderForm.measurementValue")}
                       value={row.value}
                       onChange={(e) => setRows((r) => r.map((x, i) => (i === index ? { ...x, value: e.target.value } : x)))}
                     />
-                    {!fixed && (
+                    {!fixed && canManage && (
                       <button
                         type="button"
                         className={`${btnIcon} h-auto w-8 hover:text-coral`}
@@ -281,6 +354,7 @@ export default function CustomerProfilePage() {
               );
             })}
           </div>
+          {canManage && (
           <div className="mt-4 flex items-center justify-between gap-2">
             <button
               type="button"
@@ -300,6 +374,7 @@ export default function CustomerProfilePage() {
               {t("common.save")}
             </button>
           </div>
+          )}
         </div>
       </div>
 
@@ -326,4 +401,26 @@ export default function CustomerProfilePage() {
       />
     </section>
   );
+}
+
+type Row = { label: string; value: string };
+
+/** Editor rows per garment, pre-filled from what the customer has saved for it. */
+function buildRows(catalog: Catalog, customer: Customer): Record<string, Row[]> {
+  return Object.fromEntries(
+    catalog.clothTypes.map((type) => [
+      type,
+      measurementRows(labelsForType(catalog, type), savedForType(catalog, customer, type)),
+    ]),
+  );
+}
+
+/** Garments with at least one value, as the API's measurementsByType shape. */
+function rowsToByType(rowsByType: Record<string, Row[]>): Record<string, Measurements> {
+  const result: Record<string, Measurements> = {};
+  for (const [type, rows] of Object.entries(rowsByType)) {
+    const values = rowsToMeasurements(rows);
+    if (Object.keys(values).length > 0) result[type] = values;
+  }
+  return result;
 }

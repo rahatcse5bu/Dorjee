@@ -2,9 +2,10 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
-import { Menu } from "lucide-react";
+import { Lock, Menu } from "lucide-react";
 import { getShopToken } from "../lib/auth";
 import { useI18n } from "../lib/i18n";
+import { moduleForPath, PermissionsProvider, usePermissions } from "../lib/permissions";
 import { SidebarNav } from "./SidebarNav";
 
 // Pages anyone can open without signing in.
@@ -19,7 +20,6 @@ function isBarePage(pathname: string | null) {
 export function PageShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { t } = useI18n();
   const [ready, setReady] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const isPublicPage = !!pathname && PUBLIC_PATHS.includes(pathname);
@@ -44,10 +44,62 @@ export function PageShell({ children }: { children: ReactNode }) {
     );
   }
 
-  if (isBarePage(pathname)) {
+  if (isPublicPage) {
     return <>{children}</>;
   }
 
+  return (
+    <PermissionsProvider>
+      {isBarePage(pathname) ? (
+        <PermissionGate pathname={pathname}>{children}</PermissionGate>
+      ) : (
+        <AppFrame pathname={pathname} drawerOpen={drawerOpen} setDrawerOpen={setDrawerOpen}>
+          {children}
+        </AppFrame>
+      )}
+    </PermissionsProvider>
+  );
+}
+
+/** Blocks pages whose module the user can't view. */
+function PermissionGate({ pathname, children }: { pathname: string | null; children: ReactNode }) {
+  const { t } = useI18n();
+  const { can, loading } = usePermissions();
+  const module = pathname ? moduleForPath(pathname) : null;
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-24">
+        <div className="h-7 w-7 animate-spin rounded-full border-2 border-teal/20 border-t-teal" />
+      </div>
+    );
+  }
+  if (module && !can(module)) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-ink/[0.05] text-ink/40">
+          <Lock className="h-6 w-6" />
+        </div>
+        <p className="font-semibold text-ink">{t("perm.noAccess")}</p>
+        <p className="text-sm text-ink/55">{t("perm.noAccessSub")}</p>
+      </div>
+    );
+  }
+  return <>{children}</>;
+}
+
+function AppFrame({
+  pathname,
+  drawerOpen,
+  setDrawerOpen,
+  children,
+}: {
+  pathname: string | null;
+  drawerOpen: boolean;
+  setDrawerOpen: (open: boolean) => void;
+  children: ReactNode;
+}) {
+  const { t } = useI18n();
   return (
     <div className="min-h-screen lg:flex">
       {/* Mobile top bar */}
@@ -86,7 +138,9 @@ export function PageShell({ children }: { children: ReactNode }) {
       </div>
 
       <main className="min-w-0 flex-1">
-        <div className="mx-auto max-w-[1200px] px-4 py-5 sm:px-6 lg:px-8 lg:py-7">{children}</div>
+        <div className="mx-auto max-w-[1200px] px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
+          <PermissionGate pathname={pathname}>{children}</PermissionGate>
+        </div>
       </main>
     </div>
   );

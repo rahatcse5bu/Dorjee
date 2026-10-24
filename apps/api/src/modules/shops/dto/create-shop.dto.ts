@@ -26,4 +26,7 @@ export class CreateShopDto {
 
   @IsOptional()
   clothTypes?: string[];
+
+  @IsOptional()
+  clothTypeMeasurements?: Record<string, string[]>;
 }

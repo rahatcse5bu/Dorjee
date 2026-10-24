@@ -16,4 +16,8 @@ export class UpdateCustomerDto {
   @IsOptional()
   @IsObject()
   measurements?: Record<string, string | number>;
+
+  @IsOptional()
+  @IsObject()
+  measurementsByType?: Record<string, Record<string, string | number>>;
 }

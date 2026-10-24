@@ -33,6 +33,11 @@ export class Shop {
   @Prop({ type: [String], default: [] })
   clothTypes!: string[];
 
+  // Which measurement labels each cloth type uses, e.g. { Pant: ["Waist", "Hip"] }.
+  // A cloth type without an entry uses every label.
+  @Prop({ type: Object, default: {} })
+  clothTypeMeasurements!: Record<string, string[]>;
+
   // Owner overrides of the default role permissions; see permissions.constants.ts.
   @Prop({ type: Object, default: undefined })
   rolePermissions?: Record<string, Record<string, string>>;
