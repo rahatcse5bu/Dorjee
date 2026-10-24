@@ -120,9 +120,9 @@ export default function SubscriptionPage() {
           {subscription?.trialEndsAt && (
             <div className="px-6 py-4">
               <p className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-ink/50">
-                <Clock className="h-3 w-3" /> {t("sub.trialEnds")}
+                <Clock className="h-3 w-3" /> {status === "expired" ? t("sub.trialEnded") : t("sub.trialEnds")}
               </p>
-              <p className="text-sm font-semibold text-ink">{date(subscription.trialEndsAt)}</p>
+              <p className={`text-sm font-semibold ${status === "expired" ? "text-red-700" : "text-ink"}`}>{date(subscription.trialEndsAt)}</p>
             </div>
           )}
           {subscription?.nextBillingDate && (
@@ -130,7 +130,7 @@ export default function SubscriptionPage() {
               <p className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-ink/50">
                 <CalendarDays className="h-3 w-3" /> {t("sub.nextBilling")}
               </p>
-              <p className="text-sm font-semibold text-ink">{date(subscription.nextBillingDate)}</p>
+              <p className={`text-sm font-semibold ${status === "past_due" ? "text-red-700" : "text-ink"}`}>{date(subscription.nextBillingDate)}</p>
             </div>
           )}
         </div>

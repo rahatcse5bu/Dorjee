@@ -8,13 +8,15 @@ import { TenantGuard } from "../common/guards/tenant.guard";
 import { CreateManualPaymentDto } from "./dto/create-manual-payment.dto";
 import { ReviewPaymentDto } from "./dto/review-payment.dto";
 import { PaymentsService } from "./payments.service";
+import { PermissionsGuard, RequirePermission } from "../permissions/permissions.guard";
 
 @Controller()
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
   @Post("shops/:shopId/payments/manual")
-  @UseGuards(JwtAuthGuard, TenantGuard)
+  @UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)
+  @RequirePermission(["subscription", "manage"])
   createManual(
     @Param("shopId") shopId: string,
     @Body() payload: CreateManualPaymentDto,
@@ -42,7 +44,8 @@ export class PaymentsController {
   }
 
   @Get("shops/:shopId/payments")
-  @UseGuards(JwtAuthGuard, TenantGuard)
+  @UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)
+  @RequirePermission(["subscription", "view"])
   listByShop(@Param("shopId") shopId: string) {
     return this.paymentsService.listByShop(shopId);
   }

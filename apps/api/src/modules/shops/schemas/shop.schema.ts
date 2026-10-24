@@ -32,6 +32,10 @@ export class Shop {
 
   @Prop({ type: [String], default: [] })
   clothTypes!: string[];
+
+  // Owner overrides of the default role permissions; see permissions.constants.ts.
+  @Prop({ type: Object, default: undefined })
+  rolePermissions?: Record<string, Record<string, string>>;
 }
 
 export const ShopSchema = SchemaFactory.createForClass(Shop);

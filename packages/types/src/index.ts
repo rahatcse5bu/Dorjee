@@ -13,6 +13,7 @@ export type SubscriptionStatus =
   | "active"
   | "pending"
   | "past_due"
+  | "expired"
   | "inactive"
   | "cancelled";
 

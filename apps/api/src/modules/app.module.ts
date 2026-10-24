@@ -7,6 +7,7 @@ import { CatalogModule } from "./catalog/catalog.module";
 import { CustomersModule } from "./customers/customers.module";
 import { OrdersModule } from "./orders/orders.module";
 import { PaymentsModule } from "./payments/payments.module";
+import { PermissionsModule } from "./permissions/permissions.module";
 import { ShopsModule } from "./shops/shops.module";
 import { SubscriptionsModule } from "./subscriptions/subscriptions.module";
 import { UsersModule } from "./users/users.module";
@@ -18,6 +19,7 @@ import { UsersModule } from "./users/users.module";
       envFilePath: [".env", "../../.env"],
     }),
     MongooseModule.forRoot(process.env.MONGO_URI ?? "mongodb://127.0.0.1:27017/dorjee"),
+    PermissionsModule,
     UsersModule,
     AuthModule,
     ShopsModule,

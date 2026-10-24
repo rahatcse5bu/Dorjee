@@ -15,25 +15,24 @@ import * as bcrypt from "bcryptjs";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { AuthUser } from "../common/auth-user";
 import { CurrentUser } from "../common/decorators/current-user.decorator";
-import { Roles } from "../common/decorators/roles.decorator";
-import { RolesGuard } from "../common/guards/roles.guard";
 import { TenantGuard } from "../common/guards/tenant.guard";
 import { CreateStaffDto, UpdateStaffDto } from "./dto/staff.dto";
 import { UsersService } from "./users.service";
+import { PermissionsGuard, RequirePermission } from "../permissions/permissions.guard";
 
 @Controller("shops/:shopId/staff")
-@UseGuards(JwtAuthGuard, TenantGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)
 export class StaffController {
   constructor(private readonly usersService: UsersService) {}
 
-  // Every shop member can see the team (e.g. to pick a tailor for an order).
+  // Every shop member can see the team (names are needed to show and pick assignees).
   @Get()
   list(@Param("shopId") shopId: string) {
     return this.usersService.listByShop(shopId);
   }
 
   @Post()
-  @Roles("shop_owner", "manager")
+  @RequirePermission(["staff", "manage"])
   async create(
     @Param("shopId") shopId: string,
     @Body() dto: CreateStaffDto,
@@ -57,7 +56,7 @@ export class StaffController {
   }
 
   @Patch(":userId")
-  @Roles("shop_owner", "manager")
+  @RequirePermission(["staff", "manage"])
   async update(
     @Param("shopId") shopId: string,
     @Param("userId") userId: string,
@@ -78,7 +77,7 @@ export class StaffController {
   }
 
   @Delete(":userId")
-  @Roles("shop_owner", "manager")
+  @RequirePermission(["staff", "manage"])
   async remove(
     @Param("shopId") shopId: string,
     @Param("userId") userId: string,
@@ -93,7 +92,7 @@ export class StaffController {
   }
 
   private assertCanGrantRole(currentUser: AuthUser, role: string) {
-    if (currentUser.role === "manager" && role === "manager") {
+    if (currentUser.role !== "shop_owner" && role === "manager") {
       throw new ForbiddenException("Only the shop owner can add managers");
     }
   }
@@ -106,8 +105,8 @@ export class StaffController {
     if (target.role === "shop_owner") {
       throw new ForbiddenException("The shop owner account cannot be changed here");
     }
-    if (currentUser.role === "manager" && target.role === "manager" && target._id.toString() !== currentUser.sub) {
-      throw new ForbiddenException("Managers cannot change other managers");
+    if (currentUser.role !== "shop_owner" && target.role === "manager" && target._id.toString() !== currentUser.sub) {
+      throw new ForbiddenException("Only the shop owner can change managers");
     }
     return target;
   }

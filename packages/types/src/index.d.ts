@@ -1,5 +1,5 @@
 export type UserRole = "super_admin" | "admin_finance" | "admin_support" | "shop_owner" | "shop_staff" | "tailor" | "manager" | "accountant";
-export type SubscriptionStatus = "trial" | "active" | "pending" | "past_due" | "inactive" | "cancelled";
+export type SubscriptionStatus = "trial" | "active" | "pending" | "past_due" | "expired" | "inactive" | "cancelled";
 export interface Shop {
     id: string;
     name: string;

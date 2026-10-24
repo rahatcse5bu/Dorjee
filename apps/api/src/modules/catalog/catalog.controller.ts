@@ -6,9 +6,10 @@ import {
   UpdateMeasurementLabelsDto,
 } from "./dto/update-catalog.dto";
 import { CatalogService } from "./catalog.service";
+import { PermissionsGuard, RequirePermission } from "../permissions/permissions.guard";
 
 @Controller("shops/:shopId/catalog")
-@UseGuards(JwtAuthGuard, TenantGuard)
+@UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)
 export class CatalogController {
   constructor(private readonly catalogService: CatalogService) {}
 
@@ -18,6 +19,7 @@ export class CatalogController {
   }
 
   @Put("measurements")
+  @RequirePermission(["catalog", "manage"])
   updateMeasurements(
     @Param("shopId") shopId: string,
     @Body() payload: UpdateMeasurementLabelsDto,
@@ -26,6 +28,7 @@ export class CatalogController {
   }
 
   @Put("cloth-types")
+  @RequirePermission(["catalog", "manage"])
   updateClothTypes(@Param("shopId") shopId: string, @Body() payload: UpdateClothTypesDto) {
     return this.catalogService.updateClothTypes(shopId, payload.clothTypes ?? []);
   }

@@ -4,6 +4,8 @@ import { Roles } from "../common/decorators/roles.decorator";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { TenantGuard } from "../common/guards/tenant.guard";
 import { CreateShopDto } from "./dto/create-shop.dto";
+import { UpdateShopDto } from "./dto/update-shop.dto";
+import { PermissionsGuard, RequirePermission } from "../permissions/permissions.guard";
 import { ShopsService } from "./shops.service";
 
 @Controller("shops")
@@ -29,8 +31,9 @@ export class ShopsController {
   }
 
   @Patch(":shopId")
-  @UseGuards(JwtAuthGuard, TenantGuard)
-  update(@Param("shopId") shopId: string, @Body() payload: Partial<CreateShopDto>) {
+  @UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)
+  @RequirePermission(["settings", "manage"])
+  update(@Param("shopId") shopId: string, @Body() payload: UpdateShopDto) {
     return this.shopsService.update(shopId, payload);
   }
 }

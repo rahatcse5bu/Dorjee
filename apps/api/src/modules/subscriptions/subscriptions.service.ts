@@ -25,8 +25,23 @@ export class SubscriptionsService {
       .lean();
   }
 
-  getByShopId(shopId: string) {
-    return this.subscriptionModel.findOne({ shopId }).lean();
+  /**
+   * Returns the subscription with its effective status: a trial past its end
+   * date reads as "expired", and an active plan past its billing date as
+   * "past_due". Stored status is left untouched until a payment changes it.
+   */
+  async getByShopId(shopId: string) {
+    const subscription = await this.subscriptionModel.findOne({ shopId }).lean();
+    if (!subscription) return subscription;
+
+    const now = Date.now();
+    if (subscription.status === "trial" && subscription.trialEndsAt && subscription.trialEndsAt.getTime() < now) {
+      return { ...subscription, status: "expired" as const };
+    }
+    if (subscription.status === "active" && subscription.nextBillingDate && subscription.nextBillingDate.getTime() < now) {
+      return { ...subscription, status: "past_due" as const };
+    }
+    return subscription;
   }
 
   activate(shopId: string, nextBillingDate: Date) {

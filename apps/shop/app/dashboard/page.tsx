@@ -37,6 +37,7 @@ import { useSession } from "../../lib/session";
 interface Subscription {
   status?: string;
   trialEndsAt?: string;
+  nextBillingDate?: string;
 }
 
 const DAY_MS = 86_400_000;
@@ -165,10 +166,23 @@ export default function DashboardPage() {
   const locale = lang === "bn" ? "bn-BD" : "en-US";
   const today = new Date().toLocaleDateString(locale, { weekday: "long", month: "long", day: "numeric" });
   const shortDay = (d: Date) => d.toLocaleDateString(locale, { day: "numeric", month: "short" });
-  const trialDaysLeft =
-    subscription.status === "trial" && subscription.trialEndsAt
-      ? Math.ceil((new Date(subscription.trialEndsAt).getTime() - Date.now()) / DAY_MS)
-      : null;
+  // Billing notice for the owner: trial ending soon, trial over, or payment overdue.
+  const billingNotice = (() => {
+    if (user?.role !== "shop_owner") return null;
+    if (subscription.status === "expired") {
+      return { tone: "critical" as const, text: t("dash.trialExpired", { date: date(subscription.trialEndsAt) }), cta: t("dash.subscribe") };
+    }
+    if (subscription.status === "past_due") {
+      return { tone: "critical" as const, text: t("dash.pastDue", { date: date(subscription.nextBillingDate) }), cta: t("dash.payNow") };
+    }
+    if (subscription.status === "trial" && subscription.trialEndsAt) {
+      const daysLeft = Math.ceil((new Date(subscription.trialEndsAt).getTime() - Date.now()) / DAY_MS);
+      if (daysLeft > 3) return null;
+      const text = daysLeft <= 0 ? t("dash.trialBannerToday") : t("dash.trialBanner", { n: daysLeft, date: date(subscription.trialEndsAt) });
+      return { tone: "warning" as const, text, cta: t("dash.subscribe") };
+    }
+    return null;
+  })();
   const totalStatus = Object.values(m.statusCounts).reduce((s, v) => s + v, 0);
 
   const focus = [
@@ -260,15 +274,25 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Trial banner */}
-      {trialDaysLeft !== null && trialDaysLeft <= 3 && user?.role === "shop_owner" && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-          <p className="flex items-center gap-2 text-sm font-medium text-amber-900">
+      {/* Billing notice */}
+      {billingNotice && (
+        <div
+          role={billingNotice.tone === "critical" ? "alert" : "status"}
+          className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 ${
+            billingNotice.tone === "critical" ? "border-red-200 bg-red-50" : "border-amber-200 bg-amber-50"
+          }`}
+        >
+          <p className={`flex items-center gap-2 text-sm font-medium ${billingNotice.tone === "critical" ? "text-red-800" : "text-amber-900"}`}>
             <AlertTriangle className="h-4 w-4 shrink-0" />
-            {t("dash.trialBanner", { date: date(subscription.trialEndsAt) })}
+            {billingNotice.text}
           </p>
-          <Link href="/subscription" className="rounded-lg bg-amber-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-amber-800">
-            {t("dash.subscribe")}
+          <Link
+            href="/subscription"
+            className={`rounded-lg px-3 py-1.5 text-sm font-semibold text-white ${
+              billingNotice.tone === "critical" ? "bg-red-700 hover:bg-red-800" : "bg-amber-900 hover:bg-amber-800"
+            }`}
+          >
+            {billingNotice.cta}
           </Link>
         </div>
       )}
@@ -413,7 +437,7 @@ export default function DashboardPage() {
                                 <div className="min-w-0 flex-1">
                                   <p className="flex items-center gap-2 text-sm">
                                     <span className="font-mono font-semibold text-ink">{formatOrderNo(order)}</span>
-                                    <span className="truncate font-medium text-ink/80">{customer?.name}</span>
+                                    <span className="truncate font-medium text-ink/80">{customer?.name ?? t("common.deletedCustomer")}</span>
                                   </p>
                                   <p className="truncate text-xs text-ink/50">
                                     {orderItems(order).map((i) => i.clothType).join(", ")} · {t(`status.${order.status}` as TranslationKey)}
@@ -463,7 +487,7 @@ export default function DashboardPage() {
                   return (
                     <li key={order._id} className="flex items-center gap-2 px-5 py-3">
                       <Link href={`/orders/${order._id}`} className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-ink hover:text-teal">{customer?.name}</p>
+                        <p className="truncate text-sm font-medium text-ink hover:text-teal">{customer?.name ?? t("common.deletedCustomer")}</p>
                         <p className="text-xs text-ink/50">
                           {formatOrderNo(order)}
                           {due > 0 ? <span className="font-semibold text-coral"> · {money(due)}</span> : <span className="text-emerald-700"> · {t("orders.fullyPaid")}</span>}
@@ -508,7 +532,9 @@ export default function DashboardPage() {
                       <li key={customerId}>
                         <Link href={`/customers/${customerId}`} className="group block">
                           <div className="flex items-center justify-between gap-2 text-sm">
-                            <span className="truncate font-medium text-ink group-hover:text-teal">{customer?.name ?? "—"}</span>
+                            <span className={`truncate font-medium group-hover:text-teal ${customer ? "text-ink" : "italic text-ink/45"}`}>
+                              {customer?.name ?? t("common.deletedCustomer")}
+                            </span>
                             <span className="font-semibold text-ink">{money(amount)}</span>
                           </div>
                           <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-ink/[0.06]">
