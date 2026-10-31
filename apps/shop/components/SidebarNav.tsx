@@ -17,6 +17,7 @@ import {
   Users,
 } from "lucide-react";
 import { clearShopAuth, getShopUser } from "../lib/auth";
+import { NotificationBell } from "./NotificationBell";
 import { TranslationKey, useI18n } from "../lib/i18n";
 import { PermissionModule, usePermissions } from "../lib/permissions";
 
@@ -45,7 +46,7 @@ const setupNav: NavItem[] = [
   { href: "/backup", label: "nav.backup", icon: DatabaseBackup, ownerOnly: true },
 ];
 
-export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
+export function SidebarNav({ onNavigate, showBell = true }: { onNavigate?: () => void; showBell?: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
   const { t, lang, setLang } = useI18n();
@@ -96,6 +97,8 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
           </div>
           <div className="text-[11px] font-medium text-ink/45">{t("nav.tagline")}</div>
         </div>
+        {/* The mobile drawer omits it: the top bar already has a bell. */}
+        {showBell && <NotificationBell className="ml-auto" />}
       </div>
 
       <nav className="mt-6 space-y-1">{visible(mainNav).map(renderLink)}</nav>

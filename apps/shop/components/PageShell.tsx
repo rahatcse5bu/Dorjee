@@ -5,7 +5,9 @@ import { ReactNode, useEffect, useState } from "react";
 import { Lock, Menu } from "lucide-react";
 import { getShopToken } from "../lib/auth";
 import { useI18n } from "../lib/i18n";
+import { NotificationsProvider } from "../lib/notifications";
 import { moduleForPath, PermissionsProvider, usePermissions } from "../lib/permissions";
+import { NotificationBell } from "./NotificationBell";
 import { SidebarNav } from "./SidebarNav";
 
 // Pages anyone can open without signing in.
@@ -53,9 +55,11 @@ export function PageShell({ children }: { children: ReactNode }) {
       {isBarePage(pathname) ? (
         <PermissionGate pathname={pathname}>{children}</PermissionGate>
       ) : (
-        <AppFrame pathname={pathname} drawerOpen={drawerOpen} setDrawerOpen={setDrawerOpen}>
-          {children}
-        </AppFrame>
+        <NotificationsProvider>
+          <AppFrame pathname={pathname} drawerOpen={drawerOpen} setDrawerOpen={setDrawerOpen}>
+            {children}
+          </AppFrame>
+        </NotificationsProvider>
       )}
     </PermissionsProvider>
   );
@@ -110,14 +114,17 @@ function AppFrame({
             Dorjee <span className="text-teal">Shop</span>
           </span>
         </div>
-        <button
-          type="button"
-          onClick={() => setDrawerOpen(true)}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-ink/70 hover:bg-ink/5"
-          aria-label={t("nav.menu")}
-        >
-          <Menu className="h-5 w-5" />
-        </button>
+        <div className="flex items-center gap-1">
+          <NotificationBell className="h-10 w-10" />
+          <button
+            type="button"
+            onClick={() => setDrawerOpen(true)}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-ink/70 hover:bg-ink/5"
+            aria-label={t("nav.menu")}
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        </div>
       </header>
 
       {/* Mobile drawer */}
@@ -125,7 +132,7 @@ function AppFrame({
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-ink/40" onClick={() => setDrawerOpen(false)} />
           <div className="drawer-in absolute inset-y-0 left-0 w-[280px] max-w-[85vw] border-r border-ink/10 bg-paper">
-            <SidebarNav onNavigate={() => setDrawerOpen(false)} />
+            <SidebarNav onNavigate={() => setDrawerOpen(false)} showBell={false} />
           </div>
         </div>
       )}

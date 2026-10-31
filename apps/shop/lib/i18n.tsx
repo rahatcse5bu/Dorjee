@@ -497,6 +497,18 @@ const en = {
   "backup.staffNote": "Staff accounts aren't created by a restore. Orders and payments link back to staff who have the same email in this shop.",
   "backup.cancel": "Choose another file",
 
+  // Notifications
+  "notif.title": "Notifications",
+  "notif.open": "Open notifications",
+  "notif.unreadCount": "{n} unread",
+  "notif.empty": "You're all caught up.",
+  "notif.markAll": "Mark all as read",
+  "notif.assigned": "{actor} assigned order {no} ({customer}) to you",
+  "notif.unassigned": "{actor} moved order {no} ({customer}) to someone else",
+  "notif.someone": "Someone",
+  "notif.enableDesktop": "Turn on desktop alerts",
+  "notif.desktopBlocked": "Desktop alerts are blocked in this browser",
+
   // Subscription
   "sub.title": "Subscription",
   "sub.sub": "Your plan, payments and billing history.",
@@ -1004,6 +1016,17 @@ const bn: Record<TranslationKey, string> = {
   "backup.result": "কাস্টমার: {cAdded}জন যোগ, {cMatched}জন আগেই ছিল। অর্ডার: {oAdded}টি যোগ, {oSkipped}টি বাদ।",
   "backup.staffNote": "রিস্টোরে কর্মীর অ্যাকাউন্ট তৈরি হয় না। একই ইমেইলের কর্মী থাকলে অর্ডার ও পেমেন্ট তাদের সাথে যুক্ত হয়।",
   "backup.cancel": "অন্য ফাইল বাছুন",
+
+  "notif.title": "নোটিফিকেশন",
+  "notif.open": "নোটিফিকেশন খুলুন",
+  "notif.unreadCount": "{n}টি না-পড়া",
+  "notif.empty": "নতুন কিছু নেই।",
+  "notif.markAll": "সব পড়া হয়েছে",
+  "notif.assigned": "{actor} অর্ডার {no} ({customer}) আপনাকে দায়িত্ব দিয়েছেন",
+  "notif.unassigned": "{actor} অর্ডার {no} ({customer}) অন্য কাউকে দিয়েছেন",
+  "notif.someone": "কেউ একজন",
+  "notif.enableDesktop": "ডেস্কটপ অ্যালার্ট চালু করুন",
+  "notif.desktopBlocked": "এই ব্রাউজারে ডেস্কটপ অ্যালার্ট বন্ধ আছে",
 
   "sub.title": "সাবস্ক্রিপশন",
   "sub.sub": "আপনার প্ল্যান, পেমেন্ট ও বিলের ইতিহাস।",

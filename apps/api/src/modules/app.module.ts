@@ -6,6 +6,7 @@ import { AuthModule } from "./auth/auth.module";
 import { BackupModule } from "./backup/backup.module";
 import { CatalogModule } from "./catalog/catalog.module";
 import { CustomersModule } from "./customers/customers.module";
+import { NotificationsModule } from "./notifications/notifications.module";
 import { OrdersModule } from "./orders/orders.module";
 import { PaymentsModule } from "./payments/payments.module";
 import { PermissionsModule } from "./permissions/permissions.module";
@@ -31,6 +32,7 @@ import { UsersModule } from "./users/users.module";
     PaymentsModule,
     AdminModule,
     BackupModule,
+    NotificationsModule,
   ],
 })
 export class AppModule {}

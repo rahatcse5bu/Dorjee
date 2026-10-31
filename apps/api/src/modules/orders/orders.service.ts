@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import { InjectModel } from "@nestjs/mongoose";
 import { FilterQuery, isValidObjectId, Model } from "mongoose";
 import { AddPaymentDto } from "./dto/add-payment.dto";
+import { NotificationsService } from "../notifications/notifications.service";
 import { UsersService } from "../users/users.service";
 import { CreateOrderDto } from "./dto/create-order.dto";
 import { UpdateOrderDto } from "./dto/update-order.dto";
@@ -21,6 +22,7 @@ export class OrdersService {
     @InjectModel(OrderCounter.name)
     private readonly counterModel: Model<OrderCounterDocument>,
     private readonly usersService: UsersService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   /** Orders can be assigned to any active member of the same shop, whatever their role. */
@@ -128,7 +130,7 @@ export class OrdersService {
     const status = payload.status ?? "draft";
     const { advance: _advance, advanceMethod, ...orderFields } = payload;
 
-    return this.orderModel.create({
+    const order = await this.orderModel.create({
       ...orderFields,
       shopId,
       orderNo,
@@ -147,6 +149,8 @@ export class OrdersService {
       deliveryDate: payload.deliveryDate ? new Date(payload.deliveryDate) : null,
       assignedTo: payload.assignedTo || null,
     });
+    await this.notificationsService.orderAssignmentChanged(shopId, order, null, order.assignedTo, userId);
+    return order;
   }
 
   async list(shopId: string, filter: ListOrdersFilter = {}) {
@@ -198,6 +202,7 @@ export class OrdersService {
     if (payload.deliveryDate !== undefined) {
       order.deliveryDate = payload.deliveryDate ? new Date(payload.deliveryDate) : undefined;
     }
+    const previousAssignee = order.assignedTo ?? null;
     if (payload.assignedTo !== undefined && payload.assignedTo !== order.assignedTo) {
       await this.assertAssignable(shopId, payload.assignedTo);
       order.assignedTo = payload.assignedTo || null;
@@ -206,6 +211,7 @@ export class OrdersService {
 
     order.markModified("measurements");
     await order.save();
+    await this.notificationsService.orderAssignmentChanged(shopId, order, previousAssignee, order.assignedTo, userId);
     return order.toObject();
   }
 
