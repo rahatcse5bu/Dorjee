@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Printer, Scissors } from "lucide-react";
+import { ItemFabricDetails } from "../../../../components/orders/OrderBits";
 import { btnPrimary, btnSecondary } from "../../../../components/ui";
 import { apiRequest } from "../../../../lib/api";
 import { useI18n } from "../../../../lib/i18n";
@@ -129,7 +130,10 @@ export default function PrintMemoPage() {
             <tbody>
               {items.map((item, index) => (
                 <tr key={index} className="border-b border-ink/10">
-                  <td className="py-1.5">{item.clothType}</td>
+                  <td className="py-1.5">
+                    {item.clothType}
+                    <ItemFabricDetails item={item} variant="print" />
+                  </td>
                   <td className="py-1.5 text-right">{num(item.quantity)}</td>
                   <td className="py-1.5 text-right">{money(item.price)}</td>
                   <td className="py-1.5 text-right">{money(item.price * item.quantity)}</td>
@@ -189,6 +193,7 @@ export default function PrintMemoPage() {
                   <p className="font-bold">
                     {item.clothType} {item.quantity > 1 && <span className="font-normal">× {num(item.quantity)}</span>}
                   </p>
+                  <ItemFabricDetails item={item} variant="print" />
                   {measurements.length > 0 && (
                     <div className="mt-2 grid grid-cols-4 gap-x-4 gap-y-1 text-sm sm:grid-cols-6">
                       {measurements.map(([label, value]) => (

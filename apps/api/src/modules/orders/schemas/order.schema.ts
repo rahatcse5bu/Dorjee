@@ -14,6 +14,9 @@ export const ORDER_STATUSES = [
 
 export const PAYMENT_METHODS = ["cash", "bkash", "nagad", "card", "other"] as const;
 
+/** Whose cloth the garment is made from. */
+export const FABRIC_SOURCES = ["customer", "shop"] as const;
+
 @Schema({ _id: false })
 class OrderItem {
   @Prop({ required: true, trim: true })
@@ -27,6 +30,23 @@ class OrderItem {
 
   @Prop({ type: Object, default: {} })
   measurements!: Record<string, string | number>;
+
+  @Prop({ type: String, enum: FABRIC_SOURCES })
+  fabricSource?: string;
+
+  // Fabric material / texture, e.g. "Cotton", "Linen".
+  @Prop({ trim: true })
+  fabric?: string;
+
+  @Prop({ trim: true })
+  color?: string;
+
+  // Optional swatch, e.g. "#1f3a93".
+  @Prop({ trim: true })
+  colorHex?: string;
+
+  @Prop({ trim: true })
+  styleNotes?: string;
 }
 
 const OrderItemSchema = SchemaFactory.createForClass(OrderItem);

@@ -19,17 +19,29 @@ export class CatalogService {
     return this.shopsService.update(shopId, { measurementLabels });
   }
 
-  updateClothTypes(shopId: string, clothTypes: string[], clothTypeMeasurements?: Record<string, unknown>) {
+  async updateClothTypes(shopId: string, clothTypes: string[], clothTypeMeasurements?: Record<string, unknown>) {
     if (!clothTypeMeasurements) {
       return this.shopsService.update(shopId, { clothTypes });
     }
-    // Keep entries only for existing cloth types, with unique non-empty label strings.
+    // Each cloth type owns its measurement names: keep entries only for existing
+    // types, with unique non-empty names (an empty list is allowed).
     const mapping: Record<string, string[]> = {};
     for (const type of clothTypes) {
       const labels = clothTypeMeasurements[type];
       if (!Array.isArray(labels)) continue;
-      mapping[type] = [...new Set(labels.filter((l): l is string => typeof l === "string" && l.trim() !== "").map((l) => l.trim()))];
+      mapping[type] = [
+        ...new Set(labels.filter((l): l is string => typeof l === "string" && l.trim() !== "").map((l) => l.trim())),
+      ];
     }
-    return this.shopsService.update(shopId, { clothTypes, clothTypeMeasurements: mapping });
+
+    // The shop-wide label list is derived: every name some cloth type uses, keeping
+    // the existing order and appending new names. Types without an entry still use it.
+    const shop = await this.shopsService.findOne(shopId);
+    const used = new Set(Object.values(mapping).flat());
+    const unmappedTypesExist = clothTypes.some((type) => !mapping[type]);
+    const existing = (shop?.measurementLabels ?? []).filter((label) => unmappedTypesExist || used.has(label));
+    const measurementLabels = [...existing, ...[...used].filter((label) => !existing.includes(label))];
+
+    return this.shopsService.update(shopId, { clothTypes, clothTypeMeasurements: mapping, measurementLabels });
   }
 }

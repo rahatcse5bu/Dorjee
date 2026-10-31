@@ -9,10 +9,12 @@ import {
   IsObject,
   IsOptional,
   IsString,
+  Matches,
+  MaxLength,
   Min,
   ValidateNested,
 } from "class-validator";
-import { ORDER_STATUSES, PAYMENT_METHODS } from "../schemas/order.schema";
+import { FABRIC_SOURCES, ORDER_STATUSES, PAYMENT_METHODS } from "../schemas/order.schema";
 
 class CreateOrderItemDto {
   @IsString()
@@ -31,6 +33,29 @@ class CreateOrderItemDto {
   @IsOptional()
   @IsObject()
   measurements?: Record<string, string | number>;
+
+  @IsOptional()
+  @IsIn(FABRIC_SOURCES)
+  fabricSource?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(80)
+  fabric?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  color?: string;
+
+  @IsOptional()
+  @Matches(/^#[0-9a-fA-F]{6}$/)
+  colorHex?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  styleNotes?: string;
 }
 
 export class CreateOrderDto {

@@ -17,6 +17,7 @@ import {
 import { usePermissions } from "../../lib/permissions";
 import { errorMessage, useSession } from "../../lib/session";
 import { Alert, btnPrimary, btnSecondary, Field, inputClass, Modal } from "../ui";
+import { AssigneeSelect } from "./AssigneeSelect";
 import { DraftItem, draftsToItems, draftsTotal, ItemsEditor, newDraftItem } from "./ItemsEditor";
 
 function defaultDeliveryDate() {
@@ -89,7 +90,7 @@ export function NewOrderModal({
         const nextCatalog = normalizeCatalog(catalogResult);
         setCatalog(nextCatalog);
         setCustomers(customerResult);
-        setStaff(staffResult.filter((member) => member.active !== false));
+        setStaff(staffResult);
         selectCustomer(presetCustomer ?? null, nextCatalog);
       } catch (err) {
         setError(errorMessage(err, t("common.somethingWrong")));
@@ -406,14 +407,7 @@ export function NewOrderModal({
             </Field>
             {staff.length > 0 && (
               <Field label={t("orderForm.assignTailor")}>
-                <select className={inputClass} value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>
-                  <option value="">{t("common.unassigned")}</option>
-                  {staff.map((member) => (
-                    <option key={member._id} value={member._id}>
-                      {member.name || member.email} · {t(`role.${member.role}` as Parameters<typeof t>[0])}
-                    </option>
-                  ))}
-                </select>
+                <AssigneeSelect staff={staff} value={assignedTo} onChange={setAssignedTo} />
               </Field>
             )}
             <Field label={t("common.notes")}>

@@ -1,10 +1,11 @@
 "use client";
 
-import { Plus, Ruler, Scissors, Trash2 } from "lucide-react";
+import { Palette, Plus, Ruler, Scissors, Trash2, X } from "lucide-react";
 import { useI18n } from "../../lib/i18n";
 import {
   Catalog,
   Customer,
+  FABRIC_SUGGESTIONS,
   labelsForType,
   measurementRows,
   OrderItem,
@@ -18,7 +19,14 @@ export interface DraftItem {
   price: string;
   quantity: string;
   rows: Array<{ label: string; value: string }>;
+  fabricSource: "" | "customer" | "shop";
+  fabric: string;
+  color: string;
+  colorHex: string;
+  styleNotes: string;
 }
+
+const EMPTY_DETAILS = { fabricSource: "" as const, fabric: "", color: "", colorHex: "", styleNotes: "" };
 
 /** A new item for a cloth type, pre-filled with the customer's saved measurements for it. */
 export function newDraftItem(catalog: Catalog, customer: Customer | null | undefined, clothType: string): DraftItem {
@@ -27,6 +35,7 @@ export function newDraftItem(catalog: Catalog, customer: Customer | null | undef
     price: "",
     quantity: "1",
     rows: measurementRows(labelsForType(catalog, clothType), savedForType(catalog, customer, clothType)),
+    ...EMPTY_DETAILS,
   };
 }
 
@@ -36,6 +45,11 @@ export function itemToDraft(item: OrderItem, catalog: Catalog): DraftItem {
     price: item.price === undefined ? "" : String(item.price),
     quantity: String(item.quantity || 1),
     rows: measurementRows(labelsForType(catalog, item.clothType), item.measurements),
+    fabricSource: item.fabricSource ?? "",
+    fabric: item.fabric ?? "",
+    color: item.color ?? "",
+    colorHex: item.colorHex ?? "",
+    styleNotes: item.styleNotes ?? "",
   };
 }
 
@@ -75,7 +89,17 @@ export function draftsToItems(drafts: DraftItem[]): OrderItem[] | ItemValidation
     if (!clothType) return "orderForm.errClothType";
     if (Number.isNaN(price) || price < 0) return "orderForm.errPrice";
     if (!Number.isInteger(quantity) || quantity < 1) return "orderForm.errQty";
-    items.push({ clothType, price, quantity, measurements: rowsToMeasurements(draft.rows) });
+    items.push({
+      clothType,
+      price,
+      quantity,
+      measurements: rowsToMeasurements(draft.rows),
+      fabricSource: draft.fabricSource || undefined,
+      fabric: draft.fabric.trim() || undefined,
+      color: draft.color.trim() || undefined,
+      colorHex: draft.colorHex || undefined,
+      styleNotes: draft.styleNotes.trim() || undefined,
+    });
   }
   return items;
 }
@@ -261,6 +285,93 @@ export function ItemsEditor({
                 </button>
               </div>
             </div>
+
+            {/* Fabric & style */}
+            <div className="mt-4 border-t border-ink/10 pt-3">
+              <span className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-ink/60">
+                <Palette className="h-3.5 w-3.5" />
+                {t("item.fabricStyle")}
+              </span>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <span className="mb-1 block text-[11px] font-medium text-ink/55">{t("item.fabricSource")}</span>
+                  <div className="inline-flex overflow-hidden rounded-lg ring-1 ring-inset ring-ink/15" role="radiogroup" aria-label={t("item.fabricSource")}>
+                    {(["customer", "shop"] as const).map((source) => {
+                      const on = item.fabricSource === source;
+                      return (
+                        <button
+                          key={source}
+                          type="button"
+                          role="radio"
+                          aria-checked={on}
+                          onClick={() => update(index, { fabricSource: on ? "" : source })}
+                          className={`px-3 py-1.5 text-xs font-semibold transition ${
+                            on ? "bg-teal text-white" : "bg-white text-ink/60 hover:text-teal"
+                          }`}
+                        >
+                          {t(source === "customer" ? "item.source.customer" : "item.source.shop")}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <label className="block">
+                  <span className="mb-1 block text-[11px] font-medium text-ink/55">{t("item.fabric")}</span>
+                  <input
+                    className={`${inputClass} py-2`}
+                    list="dorjee-fabrics"
+                    placeholder={t("item.fabricPlaceholder")}
+                    value={item.fabric}
+                    onChange={(e) => update(index, { fabric: e.target.value })}
+                  />
+                </label>
+                <div>
+                  <span className="mb-1 block text-[11px] font-medium text-ink/55">{t("item.color")}</span>
+                  <div className="flex gap-1.5">
+                    <input
+                      className={`${inputClass} py-2`}
+                      aria-label={t("item.color")}
+                      placeholder={t("item.colorPlaceholder")}
+                      value={item.color}
+                      onChange={(e) => update(index, { color: e.target.value })}
+                    />
+                    <label
+                      title={t("item.pickColor")}
+                      className="relative flex h-[38px] w-10 shrink-0 cursor-pointer items-center justify-center overflow-hidden rounded-xl border border-ink/15 bg-white"
+                      style={item.colorHex ? { backgroundColor: item.colorHex } : undefined}
+                    >
+                      {!item.colorHex && <Palette className="h-4 w-4 text-ink/40" />}
+                      <input
+                        type="color"
+                        aria-label={t("item.pickColor")}
+                        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                        value={item.colorHex || "#177e89"}
+                        onChange={(e) => update(index, { colorHex: e.target.value })}
+                      />
+                    </label>
+                    {item.colorHex && (
+                      <button
+                        type="button"
+                        className={`${btnIcon} h-[38px] w-8`}
+                        aria-label={t("item.clearColor")}
+                        onClick={() => update(index, { colorHex: "" })}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <label className="block sm:col-span-2">
+                  <span className="mb-1 block text-[11px] font-medium text-ink/55">{t("item.styleNotes")}</span>
+                  <input
+                    className={`${inputClass} py-2`}
+                    placeholder={t("item.stylePlaceholder")}
+                    value={item.styleNotes}
+                    onChange={(e) => update(index, { styleNotes: e.target.value })}
+                  />
+                </label>
+              </div>
+            </div>
           </div>
         );
       })}
@@ -275,6 +386,12 @@ export function ItemsEditor({
         <Plus className="h-4 w-4" />
         {t("orderForm.addItem")}
       </button>
+
+      <datalist id="dorjee-fabrics">
+        {FABRIC_SUGGESTIONS.map((fabric) => (
+          <option key={fabric} value={fabric} />
+        ))}
+      </datalist>
 
       <datalist id="dorjee-cloth-types">
         {clothTypes.map((type) => (

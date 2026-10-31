@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CalendarClock, ChevronRight, ClipboardList, Plus, Search } from "lucide-react";
 import { NewOrderModal } from "../../components/orders/NewOrderModal";
+import { AssigneeSelect } from "../../components/orders/AssigneeSelect";
 import { DeliveryLabel, StatusSelect } from "../../components/orders/OrderBits";
 import { useToast } from "../../components/Toast";
 import { Alert, btnPrimary, cardClass, EmptyState, inputClass, PageHeader, Skeleton, StatusBadge } from "../../components/ui";
@@ -75,6 +76,22 @@ export default function OrdersPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function changeAssignee(order: Order, userId: string) {
+    setOrders((prev) => prev.map((o) => (o._id === order._id ? { ...o, assignedTo: userId || null } : o)));
+    try {
+      await apiRequest(
+        `/shops/${shopId}/orders/${order._id}`,
+        { method: "PATCH", body: JSON.stringify({ assignedTo: userId || null }) },
+        token,
+      );
+      const member = staff[userId];
+      toast(member ? t("order.assignedToast", { name: member.name || member.email }) : t("order.unassignedToast"));
+    } catch (err) {
+      toast(errorMessage(err, t("common.somethingWrong")), "error");
+      void load();
+    }
+  }
 
   async function changeStatus(order: Order, status: string) {
     setOrders((prev) => prev.map((o) => (o._id === order._id ? { ...o, status } : o)));
@@ -230,6 +247,7 @@ export default function OrdersPage() {
                     <th className="px-4 py-3">{t("orders.col.delivery")}</th>
                     {canSeeAmounts && <th className="px-4 py-3 text-right">{t("orders.col.total")}</th>}
                     {canSeeAmounts && <th className="px-4 py-3 text-right">{t("orders.col.due")}</th>}
+                    <th className="px-4 py-3">{t("order.assignedTo")}</th>
                     <th className="px-4 py-3">{t("orders.col.status")}</th>
                     <th className="w-8 px-2 py-3" />
                   </tr>
@@ -250,7 +268,6 @@ export default function OrdersPage() {
                           <Link href={`/orders/${order._id}`} className="font-mono text-sm font-semibold text-ink hover:text-teal" onClick={(e) => e.stopPropagation()}>
                             {formatOrderNo(order)}
                           </Link>
-                          {assignee && <p className="mt-0.5 text-xs text-ink/45">{assignee.name || assignee.email}</p>}
                         </td>
                         <td className="px-4 py-3">
                           <p className="font-medium text-ink">{customer?.name ?? "—"}</p>
@@ -272,6 +289,18 @@ export default function OrdersPage() {
                             )}
                           </td>
                         )}
+                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          {canCreate ? (
+                            <AssigneeSelect
+                              staff={Object.values(staff)}
+                              value={order.assignedTo ?? ""}
+                              onChange={(id) => void changeAssignee(order, id)}
+                              className="w-[150px] rounded-lg border border-ink/15 bg-white/80 py-1.5 pl-2 pr-7 text-xs text-ink focus:border-teal/50 focus:outline-none focus:ring-2 focus:ring-teal/15"
+                            />
+                          ) : (
+                            <span className="text-xs text-ink/60">{assignee ? assignee.name || assignee.email : t("common.unassigned")}</span>
+                          )}
+                        </td>
                         <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                           <StatusSelect order={order} onChange={(s) => void changeStatus(order, s)} />
                         </td>
@@ -302,6 +331,9 @@ export default function OrdersPage() {
                           <p className="truncate text-sm font-medium text-ink">{customer?.name ?? "—"}</p>
                           <p className="truncate text-xs text-ink/50">
                             {orderItems(order).map((i) => i.clothType).join(", ")}
+                            {order.assignedTo && staff[order.assignedTo] && (
+                              <> · {staff[order.assignedTo].name || staff[order.assignedTo].email}</>
+                            )}
                           </p>
                         </div>
                         <StatusBadge status={order.status} />

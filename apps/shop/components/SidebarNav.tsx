@@ -9,7 +9,6 @@ import {
   LayoutDashboard,
   LogOut,
   LucideIcon,
-  Ruler,
   Scissors,
   Settings2,
   UserCog,
@@ -35,7 +34,6 @@ const mainNav: NavItem[] = [
 ];
 
 const setupNav: NavItem[] = [
-  { href: "/measurements", label: "nav.measurements", icon: Ruler, module: "catalog" },
   { href: "/cloth-types", label: "nav.clothTypes", icon: Scissors, module: "catalog" },
   { href: "/settings", label: "nav.settings", icon: Settings2, module: "settings" },
   { href: "/subscription", label: "nav.subscription", icon: CreditCard, module: "subscription" },

@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from "@nestjs/comm
 import { InjectModel } from "@nestjs/mongoose";
 import { FilterQuery, isValidObjectId, Model } from "mongoose";
 import { AddPaymentDto } from "./dto/add-payment.dto";
+import { UsersService } from "../users/users.service";
 import { CreateOrderDto } from "./dto/create-order.dto";
 import { UpdateOrderDto } from "./dto/update-order.dto";
 import { OrderCounter, OrderCounterDocument } from "./schemas/order-counter.schema";
@@ -19,7 +20,17 @@ export class OrdersService {
     @InjectModel(Order.name) private readonly orderModel: Model<OrderDocument>,
     @InjectModel(OrderCounter.name)
     private readonly counterModel: Model<OrderCounterDocument>,
+    private readonly usersService: UsersService,
   ) {}
+
+  /** Orders can be assigned to any active member of the same shop, whatever their role. */
+  private async assertAssignable(shopId: string, userId?: string | null) {
+    if (!userId) return;
+    const member = await this.usersService.findInShop(shopId, userId);
+    if (!member || member.active === false) {
+      throw new BadRequestException("Orders can only be assigned to an active member of this shop");
+    }
+  }
 
   private normalizeOrderItems(
     orderItems?: Array<{
@@ -27,6 +38,11 @@ export class OrdersService {
       price?: number;
       quantity?: number;
       measurements?: Record<string, string | number>;
+      fabricSource?: string;
+      fabric?: string;
+      color?: string;
+      colorHex?: string;
+      styleNotes?: string;
     }>,
   ) {
     return (orderItems ?? [])
@@ -36,6 +52,11 @@ export class OrdersService {
         price: item.price as number,
         quantity: item.quantity ?? 1,
         measurements: item.measurements ?? {},
+        fabricSource: item.fabricSource || undefined,
+        fabric: item.fabric?.trim() || undefined,
+        color: item.color?.trim() || undefined,
+        colorHex: item.colorHex || undefined,
+        styleNotes: item.styleNotes?.trim() || undefined,
       }));
   }
 
@@ -101,6 +122,7 @@ export class OrdersService {
       throw new BadRequestException("Advance cannot be more than the payable amount");
     }
 
+    await this.assertAssignable(shopId, payload.assignedTo);
     await this.backfillOrderNumbers(shopId);
     const orderNo = await this.nextOrderNo(shopId);
     const status = payload.status ?? "draft";
@@ -176,7 +198,10 @@ export class OrdersService {
     if (payload.deliveryDate !== undefined) {
       order.deliveryDate = payload.deliveryDate ? new Date(payload.deliveryDate) : undefined;
     }
-    if (payload.assignedTo !== undefined) order.assignedTo = payload.assignedTo || null;
+    if (payload.assignedTo !== undefined && payload.assignedTo !== order.assignedTo) {
+      await this.assertAssignable(shopId, payload.assignedTo);
+      order.assignedTo = payload.assignedTo || null;
+    }
     if (payload.notes !== undefined) order.notes = payload.notes;
 
     order.markModified("measurements");

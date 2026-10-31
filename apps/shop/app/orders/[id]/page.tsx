@@ -18,7 +18,8 @@ import {
   Wallet,
 } from "lucide-react";
 import { DraftItem, draftsToItems, ItemsEditor, itemToDraft } from "../../../components/orders/ItemsEditor";
-import { DeliveryLabel } from "../../../components/orders/OrderBits";
+import { AssigneeSelect } from "../../../components/orders/AssigneeSelect";
+import { DeliveryLabel, ItemFabricDetails } from "../../../components/orders/OrderBits";
 import { useToast } from "../../../components/Toast";
 import {
   Alert,
@@ -80,6 +81,7 @@ export default function OrderDetailPage() {
   // Details form
   const [details, setDetails] = useState({ status: "", deliveryDate: "", assignedTo: "", discount: "", notes: "" });
   const [savingDetails, setSavingDetails] = useState(false);
+  const [assigning, setAssigning] = useState(false);
 
   // Payment form
   const [payAmount, setPayAmount] = useState("");
@@ -137,6 +139,24 @@ export default function OrderDetailPage() {
     toast(t(successKey));
   }
 
+  async function assign(userId: string) {
+    setAssigning(true);
+    try {
+      const updated = await apiRequest<Order>(
+        `/shops/${shopId}/orders/${orderId}`,
+        { method: "PATCH", body: JSON.stringify({ assignedTo: userId || null }) },
+        token,
+      );
+      applyOrder(updated);
+      const member = staff.find((s) => s._id === userId);
+      toast(member ? t("order.assignedToast", { name: member.name || member.email }) : t("order.unassignedToast"));
+    } catch (err) {
+      toast(errorMessage(err, t("common.somethingWrong")), "error");
+    } finally {
+      setAssigning(false);
+    }
+  }
+
   async function quickStatus(status: string) {
     try {
       await patchOrder({ status }, "order.statusUpdated");
@@ -154,7 +174,6 @@ export default function OrderDetailPage() {
           ? {
               status: details.status,
               deliveryDate: details.deliveryDate || null,
-              assignedTo: details.assignedTo || null,
               notes: details.notes,
               // Discount is hidden from users who can't see money, so never send it for them.
               ...(canSeeAmounts ? { discount: Number(details.discount) || 0 } : {}),
@@ -278,7 +297,6 @@ export default function OrderDetailPage() {
   const detailsDirty =
     details.status !== order.status ||
     details.deliveryDate !== toDateInput(order.deliveryDate) ||
-    details.assignedTo !== (order.assignedTo ?? "") ||
     (canSeeAmounts && (Number(details.discount) || 0) !== (order.discount ?? 0)) ||
     details.notes !== (order.notes ?? "");
 
@@ -359,6 +377,7 @@ export default function OrderDetailPage() {
                         </p>
                       )}
                     </div>
+                    <ItemFabricDetails item={item} />
                     {measurements.length > 0 && (
                       <dl className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-5">
                         {measurements.map(([label, value]) => (
@@ -485,6 +504,21 @@ export default function OrderDetailPage() {
             </div>
           )}
 
+          {/* Assignee: saved as soon as it's picked */}
+          <div className={`${cardClass} p-5`}>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-ink/45">{t("order.assignedTo")}</p>
+            {canEdit ? (
+              <AssigneeSelect
+                staff={staff}
+                value={order.assignedTo ?? ""}
+                disabled={assigning}
+                onChange={(id) => void assign(id)}
+              />
+            ) : (
+              <p className="font-semibold text-ink">{staffName(order.assignedTo) ?? t("common.unassigned")}</p>
+            )}
+          </div>
+
           {/* Summary */}
           <div className={`${cardClass} p-5`}>
             <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-ink/45">{t("order.summary")}</p>
@@ -546,24 +580,6 @@ export default function OrderDetailPage() {
                 onChange={(e) => setDetails((d) => ({ ...d, deliveryDate: e.target.value }))}
               />
             </Field>
-            {staff.length > 0 && (
-              <Field label={t("orderForm.assignTailor")}>
-                <select
-                  className={inputClass}
-                  value={details.assignedTo}
-                  onChange={(e) => setDetails((d) => ({ ...d, assignedTo: e.target.value }))}
-                >
-                  <option value="">{t("common.unassigned")}</option>
-                  {staff
-                    .filter((member) => member.active !== false || member._id === order.assignedTo)
-                    .map((member) => (
-                      <option key={member._id} value={member._id}>
-                        {member.name || member.email} · {t(`role.${member.role}` as TranslationKey)}
-                      </option>
-                    ))}
-                </select>
-              </Field>
-            )}
             {canSeeAmounts && (
               <Field label={t("orderForm.discount")}>
                 <input

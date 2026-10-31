@@ -14,7 +14,7 @@ export interface Customer {
 export interface Catalog {
   clothTypes: string[];
   measurementLabels: string[];
-  /** Measurement labels per cloth type; a type without an entry uses every label. */
+  /** Measurement names owned by each cloth type; a type without an entry uses measurementLabels. */
   clothTypeMeasurements: Record<string, string[]>;
 }
 
@@ -28,11 +28,13 @@ export function normalizeCatalog(raw: Partial<Catalog> | null | undefined): Cata
   };
 }
 
-/** The measurement labels to take for a cloth type, in master-list order. */
+/**
+ * The measurement names for a cloth type. Each type owns its list (in its own
+ * order); a type without a list yet falls back to the shop-wide labels.
+ */
 export function labelsForType(catalog: Catalog, clothType: string): string[] {
-  const mapped = catalog.clothTypeMeasurements[clothType];
-  if (!mapped || mapped.length === 0) return catalog.measurementLabels;
-  return catalog.measurementLabels.filter((label) => mapped.includes(label));
+  const own = catalog.clothTypeMeasurements[clothType];
+  return own ?? catalog.measurementLabels;
 }
 
 /**
@@ -53,6 +55,32 @@ export interface OrderItem {
   price: number;
   quantity: number;
   measurements?: Measurements;
+  /** Whose cloth it is: the customer's own or the shop's. */
+  fabricSource?: "customer" | "shop";
+  fabric?: string;
+  color?: string;
+  colorHex?: string;
+  styleNotes?: string;
+}
+
+export const FABRIC_SUGGESTIONS = [
+  "Cotton",
+  "Linen",
+  "Silk",
+  "Khadi",
+  "Jamdani",
+  "Muslin",
+  "Georgette",
+  "Chiffon",
+  "Denim",
+  "Polyester",
+  "Wool",
+  "Twill",
+];
+
+/** True when an item has any fabric or style detail worth showing. */
+export function hasFabricDetails(item: OrderItem) {
+  return !!(item.fabricSource || item.fabric || item.color || item.colorHex || item.styleNotes);
 }
 
 export interface OrderPayment {
