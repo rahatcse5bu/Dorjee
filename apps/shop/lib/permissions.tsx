@@ -80,6 +80,7 @@ export function moduleForPath(pathname: string): PermissionModule | null {
     ["/cloth-types", "catalog"],
     ["/settings", "settings"],
     ["/subscription", "subscription"],
+    ["/reports", "reports"],
   ];
   return map.find(([prefix]) => pathname === prefix || pathname.startsWith(prefix + "/"))?.[1] ?? null;
 }

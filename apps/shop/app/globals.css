@@ -63,7 +63,7 @@ p {
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
 }
 
-:where(input, select, textarea):focus {
+:where(input:not([type="checkbox"]):not([type="radio"]), select, textarea):focus {
   outline: none;
   border-color: var(--brand);
   box-shadow: 0 0 0 3px rgba(31, 107, 122, 0.15);

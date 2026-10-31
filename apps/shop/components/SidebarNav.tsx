@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  DatabaseBackup,
+  BarChart3,
   ClipboardList,
   CreditCard,
   Languages,
@@ -24,12 +26,15 @@ interface NavItem {
   icon: LucideIcon;
   /** Module the user needs view access to; everyone sees the link when omitted. */
   module?: PermissionModule;
+  /** Shown only to the shop owner (e.g. backups, which hold every record). */
+  ownerOnly?: boolean;
 }
 
 const mainNav: NavItem[] = [
   { href: "/dashboard", label: "nav.dashboard", icon: LayoutDashboard },
   { href: "/orders", label: "nav.orders", icon: ClipboardList, module: "orders" },
   { href: "/customers", label: "nav.customers", icon: Users, module: "customers" },
+  { href: "/reports", label: "nav.reports", icon: BarChart3, module: "reports" },
   { href: "/staff", label: "nav.staff", icon: UserCog, module: "staff" },
 ];
 
@@ -37,6 +42,7 @@ const setupNav: NavItem[] = [
   { href: "/cloth-types", label: "nav.clothTypes", icon: Scissors, module: "catalog" },
   { href: "/settings", label: "nav.settings", icon: Settings2, module: "settings" },
   { href: "/subscription", label: "nav.subscription", icon: CreditCard, module: "subscription" },
+  { href: "/backup", label: "nav.backup", icon: DatabaseBackup, ownerOnly: true },
 ];
 
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
@@ -51,7 +57,8 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
     router.push("/login");
   }
 
-  const visible = (items: NavItem[]) => items.filter((item) => !item.module || can(item.module));
+  const visible = (items: NavItem[]) =>
+    items.filter((item) => (!item.module || can(item.module)) && (!item.ownerOnly || user?.role === "shop_owner"));
   const setupItems = visible(setupNav);
 
   function renderLink(item: NavItem) {
