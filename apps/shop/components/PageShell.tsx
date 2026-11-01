@@ -2,11 +2,12 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
-import { Lock, Menu } from "lucide-react";
+import { Lock } from "lucide-react";
 import { getShopToken } from "../lib/auth";
 import { useI18n } from "../lib/i18n";
 import { NotificationsProvider } from "../lib/notifications";
 import { moduleForPath, PermissionsProvider, usePermissions } from "../lib/permissions";
+import { BottomNav } from "./BottomNav";
 import { NotificationBell } from "./NotificationBell";
 import { SidebarNav } from "./SidebarNav";
 
@@ -103,7 +104,6 @@ function AppFrame({
   setDrawerOpen: (open: boolean) => void;
   children: ReactNode;
 }) {
-  const { t } = useI18n();
   return (
     <div className="min-h-screen lg:flex">
       {/* Mobile top bar */}
@@ -114,17 +114,8 @@ function AppFrame({
             Dorjee <span className="text-teal">Shop</span>
           </span>
         </div>
-        <div className="flex items-center gap-1">
-          <NotificationBell className="h-10 w-10" />
-          <button
-            type="button"
-            onClick={() => setDrawerOpen(true)}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-ink/70 hover:bg-ink/5"
-            aria-label={t("nav.menu")}
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-        </div>
+        {/* The full menu lives under "More" in the bottom bar. */}
+        <NotificationBell className="h-10 w-10" />
       </header>
 
       {/* Mobile drawer */}
@@ -145,10 +136,13 @@ function AppFrame({
       </div>
 
       <main className="min-w-0 flex-1">
-        <div className="mx-auto max-w-[1200px] px-4 py-5 sm:px-6 lg:px-8 lg:py-7">
+        {/* Bottom padding keeps content clear of the phone tab bar. */}
+        <div className="mx-auto max-w-[1200px] px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-5 sm:px-6 lg:px-8 lg:py-7">
           <PermissionGate pathname={pathname}>{children}</PermissionGate>
         </div>
       </main>
+
+      <BottomNav onMore={() => setDrawerOpen(true)} />
     </div>
   );
 }

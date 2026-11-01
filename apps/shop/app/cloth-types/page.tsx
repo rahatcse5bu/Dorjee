@@ -285,7 +285,7 @@ export default function ClothTypesPage() {
         )}
 
         {canEdit && (
-          <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-end gap-3">
+          <div className="sticky bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-10 flex lg:bottom-4 flex-wrap items-center justify-end gap-3">
             {dirty && <span className="rounded-lg bg-paper/90 px-2 py-1 text-sm font-medium text-amber-700">{t("catalog.unsaved")}</span>}
             <button type="submit" className={`${btnPrimary} shadow-lg`} disabled={!dirty || saving}>
               <Save className="h-4 w-4" />

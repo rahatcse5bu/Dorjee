@@ -51,6 +51,7 @@ const en = {
   "nav.logout": "Logout",
   "nav.tagline": "Tailor Management",
   "nav.menu": "Menu",
+  "nav.more": "More",
   "nav.setup": "Shop setup",
   "nav.language": "বাংলা",
 
@@ -589,6 +590,7 @@ const bn: Record<TranslationKey, string> = {
   "nav.logout": "লগআউট",
   "nav.tagline": "দর্জি দোকান ব্যবস্থাপনা",
   "nav.menu": "মেনু",
+  "nav.more": "আরও",
   "nav.setup": "দোকান সেটআপ",
   "nav.language": "English",
 

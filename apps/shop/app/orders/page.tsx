@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CalendarClock, ChevronRight, ClipboardList, Plus, Search } from "lucide-react";
+import { NEW_ORDER_EVENT } from "../../components/BottomNav";
 import { NewOrderModal } from "../../components/orders/NewOrderModal";
 import { AssigneeSelect } from "../../components/orders/AssigneeSelect";
 import { DeliveryLabel, StatusSelect } from "../../components/orders/OrderBits";
@@ -74,6 +75,9 @@ export default function OrdersPage() {
       setShowNew(true);
       window.history.replaceState(null, "", "/orders");
     }
+    const openNew = () => setShowNew(true);
+    window.addEventListener(NEW_ORDER_EVENT, openNew);
+    return () => window.removeEventListener(NEW_ORDER_EVENT, openNew);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
