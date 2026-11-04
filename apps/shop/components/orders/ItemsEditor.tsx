@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { Palette, Plus, Ruler, Scissors, Trash2, X } from "lucide-react";
 import { useI18n } from "../../lib/i18n";
+import { usePermissions } from "../../lib/permissions";
 import {
   Catalog,
   Customer,
@@ -15,6 +17,7 @@ import {
 } from "../../lib/orders";
 import { btnIcon, inputClass } from "../ui";
 import { MeasurementInput } from "./MeasurementField";
+import { NewClothTypePanel } from "./NewClothTypePanel";
 
 export interface DraftItem {
   clothType: string;
@@ -116,6 +119,7 @@ export function ItemsEditor({
   catalog,
   customer,
   prefillHint = true,
+  onCatalogChange,
 }: {
   items: DraftItem[];
   onChange: (items: DraftItem[]) => void;
@@ -124,8 +128,13 @@ export function ItemsEditor({
   customer?: Customer | null;
   /** Shows the "filled from saved measurements" note; off when editing an existing order. */
   prefillHint?: boolean;
+  /** Lets the user add a cloth type from the order form; the editor passes up the saved catalog. */
+  onCatalogChange?: (catalog: Catalog) => void;
 }) {
   const { t, money } = useI18n();
+  const canAddType = usePermissions().can("catalog", "manage") && !!onCatalogChange;
+  // The item whose "new cloth type" form is open.
+  const [addingTypeFor, setAddingTypeFor] = useState<number | null>(null);
   const clothTypes = catalog.clothTypes;
 
   function update(index: number, patch: Partial<DraftItem>) {
@@ -157,7 +166,10 @@ export function ItemsEditor({
                 {items.length > 1 && (
                   <button
                     type="button"
-                    onClick={() => onChange(items.filter((_, i) => i !== index))}
+                    onClick={() => {
+                      setAddingTypeFor(null);
+                      onChange(items.filter((_, i) => i !== index));
+                    }}
                     className={`${btnIcon} h-8 w-8 hover:bg-coral/10 hover:text-coral`}
                     aria-label={t("common.remove")}
                   >
@@ -168,7 +180,7 @@ export function ItemsEditor({
             </div>
 
             {/* Cloth type chips for one-tap selection */}
-            {clothTypes.length > 0 && (
+            {(clothTypes.length > 0 || canAddType) && (
               <div className="mb-2 flex flex-wrap gap-1.5">
                 {clothTypes.map((type) => (
                   <button
@@ -184,7 +196,29 @@ export function ItemsEditor({
                     {type}
                   </button>
                 ))}
+                {canAddType && addingTypeFor !== index && (
+                  <button
+                    type="button"
+                    onClick={() => setAddingTypeFor(index)}
+                    className="inline-flex items-center gap-1 rounded-full border border-dashed border-teal/50 px-3 py-1 text-xs font-semibold text-teal transition hover:border-teal hover:bg-teal/5"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    {t("quickType.button")}
+                  </button>
+                )}
               </div>
+            )}
+
+            {canAddType && addingTypeFor === index && (
+              <NewClothTypePanel
+                catalog={catalog}
+                onCancel={() => setAddingTypeFor(null)}
+                onCreated={(saved, clothType) => {
+                  onCatalogChange?.(saved);
+                  onChange(items.map((it, i) => (i === index ? retarget(it, clothType, saved, customer) : it)));
+                  setAddingTypeFor(null);
+                }}
+              />
             )}
 
             <div className="grid grid-cols-6 gap-2">

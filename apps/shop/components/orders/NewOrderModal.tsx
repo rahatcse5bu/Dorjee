@@ -378,6 +378,7 @@ export function NewOrderModal({
                 onChange={setItems}
                 catalog={catalog}
                 customer={customer}
+                onCatalogChange={setCatalog}
               />
               {canAddCustomers && (
               <label className="flex items-center gap-2 pt-1 text-sm text-ink/70">

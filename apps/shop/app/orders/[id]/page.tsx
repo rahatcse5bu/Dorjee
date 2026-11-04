@@ -665,6 +665,7 @@ export default function OrderDetailPage() {
               catalog={catalog}
               customer={customer}
               prefillHint={false}
+              onCatalogChange={setCatalog}
             />
           )}
           {itemsError && <Alert>{itemsError}</Alert>}
