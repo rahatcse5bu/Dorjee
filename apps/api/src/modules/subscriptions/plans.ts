@@ -6,6 +6,23 @@ export const SUBSCRIPTION_PLANS = [
   { code: "YEARLY", months: 12, priceBdt: 5100 },
 ] as const;
 
+/**
+ * Where shops send money: bKash "Send Money" to a personal account. Cashing that
+ * out costs 18.75 tk per 1,000, so the shop adds it on top of the plan price.
+ */
+export const PAYMENT_INFO = {
+  method: "bkash_manual",
+  bkashNumber: process.env.BKASH_NUMBER ?? "01793278360",
+  accountType: "personal",
+  cashoutPerThousand: 18.75,
+} as const;
+
+/** The plan price plus the cash-out charge, rounded up to whole taka. */
+export function payableFor(priceBdt: number) {
+  const payableBdt = Math.ceil(priceBdt + (priceBdt * PAYMENT_INFO.cashoutPerThousand) / 1000);
+  return { chargeBdt: payableBdt - priceBdt, payableBdt };
+}
+
 export type PlanCode = (typeof SUBSCRIPTION_PLANS)[number]["code"];
 export type Plan = (typeof SUBSCRIPTION_PLANS)[number];
 

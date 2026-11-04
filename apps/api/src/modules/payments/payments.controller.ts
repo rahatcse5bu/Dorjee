@@ -25,9 +25,8 @@ export class PaymentsController {
   ) {
     return this.paymentsService.createManual({
       shopId,
-      method: payload.method,
+      senderNumber: payload.senderNumber,
       transactionId: payload.transactionId,
-      proofImageUrl: payload.proofImageUrl,
       planCode: payload.planCode,
     });
   }

@@ -10,6 +10,9 @@ interface Payment {
   shopId: string;
   method: string;
   amountBdt: number;
+  chargeBdt?: number;
+  payableBdt?: number;
+  senderNumber?: string;
   months?: number;
   transactionId: string;
   status: string;
@@ -81,7 +84,7 @@ export default function PaymentsPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Manual Payments</h1>
           <p className="mt-1 text-sm text-slate-500">
-            Verify bKash and Nagad references submitted by shops.
+            Check each one in the bKash app: the sender number, transaction ID and amount received must match.
           </p>
         </div>
         {payments.length > 0 && (
@@ -112,9 +115,9 @@ export default function PaymentsPage() {
               <tr>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Date</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Shop ID</th>
-                <th className="px-6 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Method</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Sent from</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Plan</th>
-                <th className="px-6 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Amount</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Should receive</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Transaction ID</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Actions</th>
               </tr>
@@ -133,13 +136,21 @@ export default function PaymentsPage() {
                     {payment.shopId}
                   </td>
                   <td className="px-6 py-4">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
-                      {payment.method}
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-pink-700">
+                      {payment.method === "bkash_manual" ? "bKash" : payment.method === "nagad_manual" ? "Nagad" : payment.method}
                     </span>
+                    {payment.senderNumber && (
+                      <span className="mt-1 block font-mono text-xs text-slate-700">{payment.senderNumber}</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{planLabel(payment.months)}</td>
-                  <td className="px-6 py-4 font-semibold text-slate-800">
-                    ৳{payment.amountBdt.toLocaleString()}
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="font-semibold text-slate-800">৳{(payment.payableBdt ?? payment.amountBdt).toLocaleString()}</span>
+                    {!!payment.chargeBdt && (
+                      <span className="block text-xs text-slate-500">
+                        ৳{payment.amountBdt.toLocaleString()} + ৳{payment.chargeBdt.toLocaleString()} charge
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-4 font-mono text-xs text-slate-500">{payment.transactionId}</td>
                   <td className="px-6 py-4">

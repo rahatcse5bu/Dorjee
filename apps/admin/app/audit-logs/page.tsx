@@ -11,6 +11,8 @@ interface AuditPayment {
   status: "approved" | "rejected";
   method: string;
   amountBdt: number;
+  payableBdt?: number;
+  senderNumber?: string;
   transactionId: string;
   reviewedBy?: string;
   updatedAt: string;
@@ -120,11 +122,12 @@ export default function AuditLogsPage() {
                   </td>
                   <td className="px-6 py-4">
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
-                      {item.method}
+                      {item.method === "bkash_manual" ? "bKash" : item.method === "nagad_manual" ? "Nagad" : item.method}
                     </span>
+                    {item.senderNumber && <span className="mt-1 block font-mono text-xs text-slate-700">{item.senderNumber}</span>}
                   </td>
                   <td className="px-6 py-4 font-semibold text-slate-800 whitespace-nowrap">
-                    ৳{item.amountBdt.toLocaleString()}
+                    ৳{(item.payableBdt ?? item.amountBdt).toLocaleString()}
                   </td>
                   <td className="px-6 py-4 font-mono text-xs text-slate-500">{item.transactionId}</td>
                   <td className="px-6 py-4 text-slate-600 text-xs">{item.reviewedBy ?? "—"}</td>

@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
-import { findPlan } from "../subscriptions/plans";
+import { findPlan, payableFor } from "../subscriptions/plans";
 import { SubscriptionsService } from "../subscriptions/subscriptions.service";
 import { Payment, PaymentDocument } from "./schemas/payment.schema";
 
@@ -12,20 +12,29 @@ export class PaymentsService {
     private readonly subscriptionsService: SubscriptionsService,
   ) {}
 
-  createManual(payload: {
+  async createManual(payload: {
     shopId: string;
-    method: "bkash_manual" | "nagad_manual";
+    senderNumber: string;
     transactionId: string;
-    proofImageUrl?: string;
     planCode?: string;
   }) {
+    // One bKash transaction can only pay for one plan (a rejected one may be resubmitted).
+    const used = await this.paymentModel.exists({
+      transactionId: payload.transactionId,
+      status: { $ne: "rejected" },
+    });
+    if (used) {
+      throw new BadRequestException("This transaction ID has already been submitted");
+    }
     // The price always comes from the plan, never from the client.
     const plan = findPlan(payload.planCode);
     return this.paymentModel.create({
       ...payload,
+      method: "bkash_manual",
       planCode: plan.code,
       months: plan.months,
       amountBdt: plan.priceBdt,
+      ...payableFor(plan.priceBdt),
       subscriptionId: payload.shopId,
       status: "pending",
     });

@@ -27,6 +27,17 @@ export class Payment {
   @Prop({ required: true, trim: true })
   transactionId!: string;
 
+  // The bKash number the shop sent from. Older payments don't have one.
+  @Prop({ trim: true })
+  senderNumber?: string;
+
+  // Cash-out charge added to the plan price, and the total the shop sent.
+  @Prop({ default: 0 })
+  chargeBdt?: number;
+
+  @Prop()
+  payableBdt?: number;
+
   @Prop({ trim: true })
   proofImageUrl?: string;
 
