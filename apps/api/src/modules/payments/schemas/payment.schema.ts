@@ -46,6 +46,9 @@ export class Payment {
 
   @Prop({ default: null })
   reviewedBy?: string;
+
+  @Prop({ trim: true })
+  reviewNote?: string;
 }
 
 export const PaymentSchema = SchemaFactory.createForClass(Payment);

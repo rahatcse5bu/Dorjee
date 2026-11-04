@@ -55,7 +55,7 @@ export class PaymentsService {
       .lean();
   }
 
-  async approve(paymentId: string, reviewedBy: string) {
+  async approve(paymentId: string, reviewedBy: string, note?: string) {
     const payment = await this.paymentModel.findById(paymentId);
     if (!payment) {
       throw new NotFoundException("Payment not found");
@@ -67,6 +67,7 @@ export class PaymentsService {
 
     payment.status = "approved";
     payment.reviewedBy = reviewedBy;
+    payment.reviewNote = note;
     await payment.save();
 
     await this.subscriptionsService.activate(payment.shopId, findPlan(payment.planCode));
@@ -74,14 +75,19 @@ export class PaymentsService {
     return payment.toObject();
   }
 
-  async reject(paymentId: string, reviewedBy: string) {
+  async reject(paymentId: string, reviewedBy: string, note?: string) {
     const payment = await this.paymentModel.findById(paymentId);
     if (!payment) {
       throw new NotFoundException("Payment not found");
     }
+    // Rejecting an approved payment would leave its months on the subscription.
+    if (payment.status !== "pending") {
+      throw new BadRequestException("Payment was already reviewed");
+    }
 
     payment.status = "rejected";
     payment.reviewedBy = reviewedBy;
+    payment.reviewNote = note;
     await payment.save();
     return payment.toObject();
   }

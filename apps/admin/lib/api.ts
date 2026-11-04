@@ -27,7 +27,15 @@ export async function apiRequest<T>(
   }
 
   if (!response.ok) {
-    const message = await response.text();
+    const body = await response.text();
+    let message = body;
+    try {
+      // Nest sends { message: string | string[] }.
+      const parsed = JSON.parse(body) as { message?: string | string[] };
+      if (parsed.message) message = Array.isArray(parsed.message) ? parsed.message.join(". ") : parsed.message;
+    } catch {
+      // Not JSON; use the raw text.
+    }
     throw new Error(message || `Request failed with ${response.status}`);
   }
 

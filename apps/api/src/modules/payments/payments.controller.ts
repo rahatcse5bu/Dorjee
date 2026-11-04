@@ -59,9 +59,9 @@ export class PaymentsController {
   approve(
     @Param("paymentId") paymentId: string,
     @CurrentUser() user: AuthUser,
-    @Body() _payload: ReviewPaymentDto,
+    @Body() payload: ReviewPaymentDto,
   ) {
-    return this.paymentsService.approve(paymentId, user.sub);
+    return this.paymentsService.approve(paymentId, user.sub, payload.notes ?? payload.reason);
   }
 
   @Patch("admin/payments/:paymentId/reject")
@@ -70,8 +70,8 @@ export class PaymentsController {
   reject(
     @Param("paymentId") paymentId: string,
     @CurrentUser() user: AuthUser,
-    @Body() _payload: ReviewPaymentDto,
+    @Body() payload: ReviewPaymentDto,
   ) {
-    return this.paymentsService.reject(paymentId, user.sub);
+    return this.paymentsService.reject(paymentId, user.sub, payload.notes ?? payload.reason);
   }
 }

@@ -47,31 +47,23 @@ export default function PaymentsPage() {
     void loadPending();
   }, []);
 
-  async function approve(paymentId: string) {
+  async function review(paymentId: string, action: "approve" | "reject") {
     const token = getAdminToken();
-    if (!token) return;
-    setProcessing(paymentId);
-    try {
-      await apiRequest(`/admin/payments/${paymentId}/approve`, {
-        method: "PATCH",
-        body: JSON.stringify({ notes: "Approved" }),
-      }, token);
-      await loadPending();
-    } finally {
-      setProcessing(null);
+    if (!token) {
+      setError("Please login from /login with an admin account.");
+      return;
     }
-  }
-
-  async function reject(paymentId: string) {
-    const token = getAdminToken();
-    if (!token) return;
     setProcessing(paymentId);
+    setError("");
     try {
-      await apiRequest(`/admin/payments/${paymentId}/reject`, {
-        method: "PATCH",
-        body: JSON.stringify({ notes: "Rejected" }),
-      }, token);
+      await apiRequest(
+        `/admin/payments/${paymentId}/${action}`,
+        { method: "PATCH", body: JSON.stringify({ notes: action === "approve" ? "Approved" : "Rejected" }) },
+        token,
+      );
       await loadPending();
+    } catch (err) {
+      setError(`Could not ${action} this payment: ${err instanceof Error ? err.message : "unknown error"}`);
     } finally {
       setProcessing(null);
     }
@@ -156,7 +148,7 @@ export default function PaymentsPage() {
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => void approve(payment._id)}
+                        onClick={() => void review(payment._id, "approve")}
                         disabled={processing === payment._id}
                         className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
@@ -164,7 +156,7 @@ export default function PaymentsPage() {
                         Approve
                       </button>
                       <button
-                        onClick={() => void reject(payment._id)}
+                        onClick={() => void review(payment._id, "reject")}
                         disabled={processing === payment._id}
                         className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
