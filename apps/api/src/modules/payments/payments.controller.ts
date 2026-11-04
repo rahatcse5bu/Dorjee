@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
+import { SkipSubscriptionCheck } from "../common/decorators/skip-subscription.decorator";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { CurrentUser } from "../common/decorators/current-user.decorator";
 import { Roles } from "../common/decorators/roles.decorator";
@@ -16,6 +17,7 @@ export class PaymentsController {
 
   @Post("shops/:shopId/payments/manual")
   @UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)
+  @SkipSubscriptionCheck()
   @RequirePermission(["subscription", "manage"])
   createManual(
     @Param("shopId") shopId: string,
@@ -46,6 +48,7 @@ export class PaymentsController {
 
   @Get("shops/:shopId/payments")
   @UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)
+  @SkipSubscriptionCheck()
   @RequirePermission(["subscription", "view"])
   listByShop(@Param("shopId") shopId: string) {
     return this.paymentsService.listByShop(shopId);

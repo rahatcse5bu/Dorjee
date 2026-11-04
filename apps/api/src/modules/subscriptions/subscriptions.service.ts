@@ -46,6 +46,21 @@ export class SubscriptionsService {
   }
 
   /**
+   * Whether the shop may use the app: only during an unexpired trial or a paid
+   * period. Shops with no subscription record are locked too.
+   */
+  async getAccess(shopId: string) {
+    const subscription = await this.getByShopId(shopId);
+    const status = subscription?.status ?? "inactive";
+    return {
+      locked: status !== "trial" && status !== "active",
+      status,
+      trialEndsAt: subscription?.trialEndsAt ?? null,
+      nextBillingDate: subscription?.nextBillingDate ?? null,
+    };
+  }
+
+  /**
    * Activates a paid plan. Time still left on an active subscription is kept:
    * the plan's months are added to its billing date, otherwise to today.
    */

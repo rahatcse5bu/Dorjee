@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
+import { SkipSubscriptionCheck } from "../common/decorators/skip-subscription.decorator";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { Roles } from "../common/decorators/roles.decorator";
 import { RolesGuard } from "../common/guards/roles.guard";
@@ -26,6 +27,7 @@ export class ShopsController {
 
   @Get(":shopId")
   @UseGuards(JwtAuthGuard, TenantGuard)
+  @SkipSubscriptionCheck()
   getOne(@Param("shopId") shopId: string) {
     return this.shopsService.findOne(shopId);
   }

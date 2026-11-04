@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
+import { SkipSubscriptionCheck } from "../common/decorators/skip-subscription.decorator";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { Roles } from "../common/decorators/roles.decorator";
 import { RolesGuard } from "../common/guards/roles.guard";
@@ -13,7 +14,9 @@ import { RestoreBackupDto } from "./dto/restore-backup.dto";
 export class BackupController {
   constructor(private readonly backupService: BackupService) {}
 
+  // Owners can always take their data with them, paid or not.
   @Get()
+  @SkipSubscriptionCheck()
   export(@Param("shopId") shopId: string) {
     return this.backupService.export(shopId);
   }

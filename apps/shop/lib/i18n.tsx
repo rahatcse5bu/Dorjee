@@ -424,6 +424,13 @@ const en = {
   "perm.d.reports": "View: the Statistics page and money figures on the dashboard",
   "perm.noAccess": "You don't have access to this page.",
   "perm.noAccessSub": "Ask your shop owner to change your role's permissions.",
+  "lock.trialTitle": "Your free trial has ended",
+  "lock.title": "Your subscription has ended",
+  "lock.endedOn": "It ended on {date}.",
+  "lock.body": "Choose a plan and pay with bKash or Nagad to keep using Dorjee. Your data is safe and everything unlocks as soon as your payment is approved.",
+  "lock.bodyStaff": "Dorjee is locked until the shop owner pays for a plan. Your data is safe.",
+  "lock.cta": "Choose a plan",
+  "lock.backup": "Download backup",
   "perm.readOnlyPage": "You can view this page but not change it.",
 
   // Statistics
@@ -972,6 +979,13 @@ const bn: Record<TranslationKey, string> = {
   "perm.d.reports": "দেখা: পরিসংখ্যান পাতা ও ড্যাশবোর্ডে টাকার হিসাব",
   "perm.noAccess": "এই পাতায় আপনার প্রবেশাধিকার নেই।",
   "perm.noAccessSub": "আপনার পদের অনুমতি বদলাতে দোকানের মালিককে বলুন।",
+  "lock.trialTitle": "আপনার ফ্রি ট্রায়াল শেষ হয়েছে",
+  "lock.title": "আপনার সাবস্ক্রিপশন শেষ হয়েছে",
+  "lock.endedOn": "{date} তারিখে শেষ হয়েছে।",
+  "lock.body": "দর্জি ব্যবহার চালিয়ে যেতে একটি প্ল্যান বেছে নিয়ে বিকাশ বা নগদে পেমেন্ট করুন। আপনার সব তথ্য নিরাপদ আছে, পেমেন্ট অনুমোদন হলেই সব আবার চালু হয়ে যাবে।",
+  "lock.bodyStaff": "দোকানের মালিক প্ল্যানের পেমেন্ট না করা পর্যন্ত দর্জি বন্ধ থাকবে। আপনার তথ্য নিরাপদ আছে।",
+  "lock.cta": "প্ল্যান বেছে নিন",
+  "lock.backup": "ব্যাকআপ ডাউনলোড",
   "perm.readOnlyPage": "আপনি এই পাতাটি দেখতে পারবেন, কিন্তু পরিবর্তন করতে পারবেন না।",
 
   "nav.reports": "পরিসংখ্যান",

@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, Put, UseGuards } from "@nestjs/common";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { AuthUser } from "../common/auth-user";
 import { CurrentUser } from "../common/decorators/current-user.decorator";
+import { SkipSubscriptionCheck } from "../common/decorators/skip-subscription.decorator";
 import { Roles } from "../common/decorators/roles.decorator";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { TenantGuard } from "../common/guards/tenant.guard";
@@ -16,6 +17,7 @@ export class PermissionsController {
 
   /** The full role matrix plus the caller's own effective permissions. */
   @Get()
+  @SkipSubscriptionCheck()
   async get(@Param("shopId") shopId: string, @CurrentUser() user: AuthUser) {
     return {
       modules: PERMISSION_MODULES,

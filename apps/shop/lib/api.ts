@@ -55,6 +55,10 @@ export async function apiRequest<T>(
       clearShopAuth();
       window.location.href = "/login?expired=1";
     }
+    // The shop's trial or plan ended: the app swaps the page for the subscribe screen.
+    if (response.status === 402 && typeof window !== "undefined") {
+      window.dispatchEvent(new Event("dorjee:subscription-locked"));
+    }
     throw new ApiError(message, response.status);
   }
 

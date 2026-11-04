@@ -2,11 +2,13 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { ReactNode, useEffect, useState } from "react";
-import { Lock } from "lucide-react";
+import Link from "next/link";
+import { CreditCard, DatabaseBackup, Lock } from "lucide-react";
 import { getShopToken } from "../lib/auth";
 import { useI18n } from "../lib/i18n";
 import { NotificationsProvider } from "../lib/notifications";
 import { moduleForPath, PermissionsProvider, usePermissions } from "../lib/permissions";
+import { OPEN_WHEN_LOCKED, SubscriptionAccessProvider, useSubscriptionAccess } from "../lib/subscription";
 import { BottomNav } from "./BottomNav";
 import { NotificationBell } from "./NotificationBell";
 import { SidebarNav } from "./SidebarNav";
@@ -53,6 +55,7 @@ export function PageShell({ children }: { children: ReactNode }) {
 
   return (
     <PermissionsProvider>
+      <SubscriptionAccessProvider>
       {isBarePage(pathname) ? (
         <PermissionGate pathname={pathname}>{children}</PermissionGate>
       ) : (
@@ -62,20 +65,51 @@ export function PageShell({ children }: { children: ReactNode }) {
           </AppFrame>
         </NotificationsProvider>
       )}
+      </SubscriptionAccessProvider>
     </PermissionsProvider>
   );
 }
 
-/** Blocks pages whose module the user can't view. */
+/** Blocks pages whose module the user can't view, and every page but paying once the subscription ends. */
 function PermissionGate({ pathname, children }: { pathname: string | null; children: ReactNode }) {
-  const { t } = useI18n();
+  const { t, date } = useI18n();
   const { can, loading } = usePermissions();
+  const { loading: accessLoading, access } = useSubscriptionAccess();
   const module = pathname ? moduleForPath(pathname) : null;
+  const openWhenLocked = !!pathname && OPEN_WHEN_LOCKED.some((p) => pathname === p || pathname.startsWith(p + "/"));
 
-  if (loading) {
+  if (loading || accessLoading) {
     return (
       <div className="flex justify-center py-24">
         <div className="h-7 w-7 animate-spin rounded-full border-2 border-teal/20 border-t-teal" />
+      </div>
+    );
+  }
+  if (access?.locked && !openWhenLocked) {
+    const ended = access.status === "expired" ? access.trialEndsAt : access.nextBillingDate;
+    const canPay = can("subscription", "manage");
+    return (
+      <div className="mx-auto flex max-w-md flex-col items-center justify-center gap-3 py-20 text-center">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-coral/10 text-coral">
+          <Lock className="h-7 w-7" />
+        </div>
+        <h1 className="text-xl font-bold text-ink">{t(access.status === "expired" ? "lock.trialTitle" : "lock.title")}</h1>
+        <p className="text-sm text-ink/60">
+          {ended ? t("lock.endedOn", { date: date(ended) }) + " " : ""}
+          {t(canPay ? "lock.body" : "lock.bodyStaff")}
+        </p>
+        {canPay && (
+          <div className="mt-2 flex flex-wrap justify-center gap-2">
+            <Link href="/subscription" className="inline-flex items-center gap-2 rounded-xl bg-teal px-5 py-2.5 text-sm font-semibold text-white hover:bg-teal/90">
+              <CreditCard className="h-4 w-4" />
+              {t("lock.cta")}
+            </Link>
+            <Link href="/backup" className="inline-flex items-center gap-2 rounded-xl border border-ink/15 bg-white px-4 py-2.5 text-sm font-semibold text-ink/70 hover:text-teal">
+              <DatabaseBackup className="h-4 w-4" />
+              {t("lock.backup")}
+            </Link>
+          </div>
+        )}
       </div>
     );
   }

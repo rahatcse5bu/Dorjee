@@ -1,4 +1,5 @@
 import { Controller, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
+import { SkipSubscriptionCheck } from "../common/decorators/skip-subscription.decorator";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { AuthUser } from "../common/auth-user";
 import { CurrentUser } from "../common/decorators/current-user.decorator";
@@ -8,6 +9,7 @@ import { NotificationsService } from "./notifications.service";
 // Everyone only ever sees and changes their own notifications.
 @Controller("shops/:shopId/notifications")
 @UseGuards(JwtAuthGuard, TenantGuard)
+@SkipSubscriptionCheck()
 export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
