@@ -9,11 +9,15 @@ export class Subscription {
   @Prop({ required: true, unique: true })
   shopId!: string;
 
-  @Prop({ required: true, default: "MONTHLY_500_BDT" })
+  // The last plan paid for; see plans.ts. Older records hold "MONTHLY_500_BDT".
+  @Prop({ required: true, default: "MONTHLY" })
   planCode!: string;
 
   @Prop({ required: true, default: 500 })
   amountBdt!: number;
+
+  @Prop({ required: true, default: 1 })
+  months!: number;
 
   @Prop({ required: true, default: "trial" })
   status!: SubscriptionStatus;

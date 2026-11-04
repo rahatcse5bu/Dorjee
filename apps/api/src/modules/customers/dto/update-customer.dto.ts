@@ -15,9 +15,9 @@ export class UpdateCustomerDto {
 
   @IsOptional()
   @IsObject()
-  measurements?: Record<string, string | number>;
+  measurements?: Record<string, string | number | boolean>;
 
   @IsOptional()
   @IsObject()
-  measurementsByType?: Record<string, Record<string, string | number>>;
+  measurementsByType?: Record<string, Record<string, string | number | boolean>>;
 }

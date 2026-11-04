@@ -1,0 +1,10 @@
+import { openApp } from './lib.mjs';
+const { browser, ctx, page } = await openApp();
+await page.goto('http://localhost:3100/login', { waitUntil: 'networkidle' });
+await page.locator('input[type=email]').fill('owner@rahman.demo');
+await page.locator('input[type=password]').fill('demo12345');
+await page.locator('button[type=submit]').click();
+await page.waitForURL(u => !u.pathname.startsWith('/login'), { timeout: 20000 });
+await ctx.storageState({ path: 'tut/state.json' });
+console.log('logged in');
+await browser.close();

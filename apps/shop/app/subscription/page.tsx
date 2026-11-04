@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { BadgeCheck, CalendarDays, Clock, CreditCard, Zap } from "lucide-react";
+import { BadgeCheck, CalendarDays, Check, Clock, CreditCard, Zap } from "lucide-react";
 import { useToast } from "../../components/Toast";
 import { Alert, btnPrimary, cardClass, EmptyState, Field, inputClass, PageHeader } from "../../components/ui";
 import { apiRequest } from "../../lib/api";
@@ -9,9 +9,16 @@ import { TranslationKey, useI18n } from "../../lib/i18n";
 import { usePermissions } from "../../lib/permissions";
 import { errorMessage, useSession } from "../../lib/session";
 
+interface Plan {
+  code: string;
+  months: number;
+  priceBdt: number;
+}
+
 interface Subscription {
   planCode: string;
   amountBdt: number;
+  months?: number;
   status: string;
   trialEndsAt?: string;
   nextBillingDate?: string;
@@ -21,6 +28,7 @@ interface Payment {
   _id: string;
   method: "bkash_manual" | "nagad_manual";
   amountBdt: number;
+  months?: number;
   transactionId: string;
   status: "pending" | "approved" | "rejected";
   createdAt: string;
@@ -42,13 +50,18 @@ const SUB_STYLE: Record<string, { dot: string; text: string }> = {
   cancelled: { dot: "bg-ink/30", text: "text-ink/60" },
 };
 
+// Shown until the price list loads; the API's list is the source of truth.
+const FALLBACK_PLANS: Plan[] = [{ code: "MONTHLY", months: 1, priceBdt: 500 }];
+
 export default function SubscriptionPage() {
-  const { t, money, date } = useI18n();
+  const { t, money, date, num } = useI18n();
   const toast = useToast();
   const { token, shopId } = useSession();
   const canPay = usePermissions().can("subscription", "manage");
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [plans, setPlans] = useState<Plan[]>(FALLBACK_PLANS);
+  const [planCode, setPlanCode] = useState("MONTHLY");
   const [method, setMethod] = useState<"bkash_manual" | "nagad_manual">("bkash_manual");
   const [transactionId, setTransactionId] = useState("");
   const [proofImageUrl, setProofImageUrl] = useState("");
@@ -56,12 +69,18 @@ export default function SubscriptionPage() {
   const [submitting, setSubmitting] = useState(false);
 
   async function loadData() {
-    const [subscriptionResult, paymentResult] = await Promise.all([
+    const [subscriptionResult, paymentResult, planResult] = await Promise.all([
       apiRequest<Subscription>(`/shops/${shopId}/subscription`, {}, token),
       apiRequest<Payment[]>(`/shops/${shopId}/payments`, {}, token),
+      apiRequest<Plan[]>(`/subscription-plans`, {}, token),
     ]);
     setSubscription(subscriptionResult);
     setPayments(paymentResult);
+    if (planResult.length > 0) {
+      setPlans(planResult);
+      // Pre-select the plan the shop is on, so renewing is one tap.
+      if (planResult.some((p) => p.code === subscriptionResult?.planCode)) setPlanCode(subscriptionResult!.planCode);
+    }
   }
 
   useEffect(() => {
@@ -76,7 +95,7 @@ export default function SubscriptionPage() {
     try {
       await apiRequest(
         `/shops/${shopId}/payments/manual`,
-        { method: "POST", body: JSON.stringify({ method, transactionId, proofImageUrl: proofImageUrl || undefined }) },
+        { method: "POST", body: JSON.stringify({ method, transactionId, proofImageUrl: proofImageUrl || undefined, planCode }) },
         token,
       );
       setTransactionId("");
@@ -93,6 +112,14 @@ export default function SubscriptionPage() {
   const status = subscription?.status ?? "inactive";
   const statusStyle = SUB_STYLE[status] ?? SUB_STYLE.inactive;
   const amount = subscription?.amountBdt ?? 500;
+  const currentMonths = subscription?.months ?? 1;
+  const monthlyPrice = plans.find((p) => p.months === 1)?.priceBdt ?? 500;
+  const selected = plans.find((p) => p.code === planCode) ?? plans[0];
+  const bestValue = plans.reduce((best, p) => (p.priceBdt / p.months < best.priceBdt / best.months ? p : best), plans[0]);
+  const period = (months: number) =>
+    months === 1 ? t("sub.oneMonth") : months === 12 ? t("sub.oneYear") : t("sub.months", { n: num(months) });
+  const hasTimeLeft =
+    status === "active" && !!subscription?.nextBillingDate && new Date(subscription.nextBillingDate).getTime() > Date.now();
 
   return (
     <section className="space-y-5">
@@ -104,7 +131,10 @@ export default function SubscriptionPage() {
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-white/60">{t("sub.currentPlan")}</p>
             <p className="mt-2 text-3xl font-bold text-white">
-              {money(amount)} <span className="text-base font-medium text-white/70">{t("sub.perMonth")}</span>
+              {money(amount)}{" "}
+              <span className="text-base font-medium text-white/70">
+                {currentMonths === 1 ? t("sub.perMonth") : `/ ${period(currentMonths)}`}
+              </span>
             </p>
           </div>
           <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/15 text-white">
@@ -147,9 +177,56 @@ export default function SubscriptionPage() {
           </div>
           <div>
             <p className="font-semibold text-ink">{t("sub.submitPayment")}</p>
-            <p className="text-xs text-ink/55">{t("sub.howTo", { amount: String(amount) })}</p>
+            <p className="text-xs text-ink/55">{t("sub.howTo", { amount: num(selected.priceBdt) })}</p>
           </div>
         </div>
+        <fieldset>
+          <legend className="mb-2 text-xs font-semibold text-ink/60">{t("sub.choosePlan")}</legend>
+          <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4" role="radiogroup">
+            {plans.map((plan) => {
+              const on = plan.code === selected.code;
+              const saving = monthlyPrice * plan.months - plan.priceBdt;
+              return (
+                <button
+                  key={plan.code}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  onClick={() => setPlanCode(plan.code)}
+                  className={`relative flex flex-col items-stretch justify-start rounded-xl border-2 p-3.5 text-left transition ${
+                    on ? "border-teal bg-teal/[0.06]" : "border-ink/10 bg-white hover:border-teal/40"
+                  }`}
+                >
+                  {plan.code === bestValue.code && plan.months > 1 && (
+                    <span className="absolute -top-2.5 right-2 rounded-full bg-brass px-2 py-0.5 text-[10px] font-bold text-white">
+                      {t("sub.bestValue")}
+                    </span>
+                  )}
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-semibold text-ink">{period(plan.months)}</span>
+                    <span
+                      className={`flex h-5 w-5 items-center justify-center rounded-full border-2 ${
+                        on ? "border-teal bg-teal text-white" : "border-ink/20"
+                      }`}
+                    >
+                      {on && <Check className="h-3 w-3" />}
+                    </span>
+                  </span>
+                  <span className="mt-1.5 block text-xl font-bold text-ink">{money(plan.priceBdt)}</span>
+                  <span className="block text-xs text-ink/55">
+                    {t("sub.monthlyEq", { amount: money(Math.round(plan.priceBdt / plan.months)) })}
+                  </span>
+                  {saving > 0 && (
+                    <span className="mt-2 self-start rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                      {t("sub.save", { amount: money(saving) })}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          {hasTimeLeft && <p className="mt-2 text-xs text-ink/55">{t("sub.extendNote")}</p>}
+        </fieldset>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label={t("sub.method")}>
             <select
@@ -204,6 +281,7 @@ export default function SubscriptionPage() {
               <thead>
                 <tr className="border-b border-ink/10 bg-paper/60 text-left text-xs font-semibold text-ink/50">
                   <th className="px-5 py-3">{t("sub.col.date")}</th>
+                  <th className="px-5 py-3">{t("sub.col.plan")}</th>
                   <th className="px-5 py-3">{t("sub.col.method")}</th>
                   <th className="px-5 py-3">{t("sub.col.amount")}</th>
                   <th className="px-5 py-3">{t("sub.col.txn")}</th>
@@ -216,6 +294,7 @@ export default function SubscriptionPage() {
                   return (
                     <tr key={payment._id}>
                       <td className="px-5 py-3 text-ink/65">{date(payment.createdAt)}</td>
+                      <td className="whitespace-nowrap px-5 py-3 text-ink/80">{period(payment.months ?? 1)}</td>
                       <td className="px-5 py-3 font-medium text-ink">
                         {payment.method === "bkash_manual" ? t("method.bkash") : t("method.nagad")}
                       </td>

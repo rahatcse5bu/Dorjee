@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ClipboardList, MapPin, Pencil, Phone, Plus, Ruler, Save, Trash2, Users } from "lucide-react";
 import { CustomerFormModal } from "../../../components/CustomerFormModal";
 import { NewOrderModal } from "../../../components/orders/NewOrderModal";
+import { MeasurementInput } from "../../../components/orders/MeasurementField";
 import { useToast } from "../../../components/Toast";
 import {
   btnIcon,
@@ -26,6 +27,7 @@ import {
   Catalog,
   EMPTY_CATALOG,
   labelsForType,
+  isBooleanLabel,
   Measurements,
   measurementRows,
   normalizeCatalog,
@@ -331,13 +333,12 @@ export default function CustomerProfilePage() {
                     />
                   )}
                   <div className="flex gap-1">
-                    <input
-                      className={`${inputClass} py-2`}
-                      inputMode="decimal"
+                    <MeasurementInput
+                      boolean={fixed && isBooleanLabel(catalog, row.label)}
                       disabled={!canManage}
-                      aria-label={row.label || t("orderForm.measurementValue")}
+                      label={row.label || t("orderForm.measurementValue")}
                       value={row.value}
-                      onChange={(e) => setRows((r) => r.map((x, i) => (i === index ? { ...x, value: e.target.value } : x)))}
+                      onChange={(value) => setRows((r) => r.map((x, i) => (i === index ? { ...x, value } : x)))}
                     />
                     {!fixed && canManage && (
                       <button

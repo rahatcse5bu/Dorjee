@@ -39,7 +39,7 @@ export class OrdersService {
       clothType?: string;
       price?: number;
       quantity?: number;
-      measurements?: Record<string, string | number>;
+      measurements?: Record<string, string | number | boolean>;
       fabricSource?: string;
       fabric?: string;
       color?: string;

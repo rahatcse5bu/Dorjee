@@ -10,9 +10,14 @@ interface Payment {
   shopId: string;
   method: string;
   amountBdt: number;
+  months?: number;
   transactionId: string;
   status: string;
   createdAt: string;
+}
+
+function planLabel(months = 1) {
+  return months === 12 ? "1 year" : months === 1 ? "1 month" : `${months} months`;
 }
 
 export default function PaymentsPage() {
@@ -108,6 +113,7 @@ export default function PaymentsPage() {
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Date</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Shop ID</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Method</th>
+                <th className="px-6 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Plan</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Amount</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Transaction ID</th>
                 <th className="px-6 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">Actions</th>
@@ -131,6 +137,7 @@ export default function PaymentsPage() {
                       {payment.method}
                     </span>
                   </td>
+                  <td className="px-6 py-4 text-slate-700 whitespace-nowrap">{planLabel(payment.months)}</td>
                   <td className="px-6 py-4 font-semibold text-slate-800">
                     ৳{payment.amountBdt.toLocaleString()}
                   </td>

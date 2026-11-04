@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
+import { findPlan } from "../subscriptions/plans";
 import { SubscriptionsService } from "../subscriptions/subscriptions.service";
 import { Payment, PaymentDocument } from "./schemas/payment.schema";
 
@@ -16,10 +17,15 @@ export class PaymentsService {
     method: "bkash_manual" | "nagad_manual";
     transactionId: string;
     proofImageUrl?: string;
+    planCode?: string;
   }) {
+    // The price always comes from the plan, never from the client.
+    const plan = findPlan(payload.planCode);
     return this.paymentModel.create({
       ...payload,
-      amountBdt: 500,
+      planCode: plan.code,
+      months: plan.months,
+      amountBdt: plan.priceBdt,
       subscriptionId: payload.shopId,
       status: "pending",
     });
@@ -45,14 +51,16 @@ export class PaymentsService {
     if (!payment) {
       throw new NotFoundException("Payment not found");
     }
+    // Approving twice would add the plan's months twice.
+    if (payment.status !== "pending") {
+      throw new BadRequestException("Payment was already reviewed");
+    }
 
     payment.status = "approved";
     payment.reviewedBy = reviewedBy;
     await payment.save();
 
-    const nextBillingDate = new Date();
-    nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
-    await this.subscriptionsService.activate(payment.shopId, nextBillingDate);
+    await this.subscriptionsService.activate(payment.shopId, findPlan(payment.planCode));
 
     return payment.toObject();
   }

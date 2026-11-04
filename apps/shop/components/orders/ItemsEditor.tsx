@@ -6,6 +6,7 @@ import {
   Catalog,
   Customer,
   FABRIC_SUGGESTIONS,
+  isBooleanLabel,
   labelsForType,
   measurementRows,
   OrderItem,
@@ -13,6 +14,7 @@ import {
   savedForType,
 } from "../../lib/orders";
 import { btnIcon, inputClass } from "../ui";
+import { MeasurementInput } from "./MeasurementField";
 
 export interface DraftItem {
   clothType: string;
@@ -236,14 +238,25 @@ export function ItemsEditor({
                   const isCatalogLabel = labelsForType(catalog, item.clothType).includes(row.label);
                   return (
                     <div key={rowIndex} className="relative">
-                      {isCatalogLabel ? (
+                      {isCatalogLabel && isBooleanLabel(catalog, row.label) ? (
+                        // A div, not a label: a label would forward clicks on its text to the first button.
+                        <div>
+                          <span className="mb-1 block truncate text-[11px] font-medium text-ink/55">{row.label}</span>
+                          <MeasurementInput
+                            label={row.label}
+                            boolean
+                            value={row.value}
+                            onChange={(value) => updateRow(index, rowIndex, { value })}
+                          />
+                        </div>
+                      ) : isCatalogLabel ? (
                         <label className="block">
                           <span className="mb-1 block truncate text-[11px] font-medium text-ink/55">{row.label}</span>
-                          <input
-                            className={`${inputClass} py-2`}
-                            inputMode="decimal"
+                          <MeasurementInput
+                            label={row.label}
+                            boolean={false}
                             value={row.value}
-                            onChange={(e) => updateRow(index, rowIndex, { value: e.target.value })}
+                            onChange={(value) => updateRow(index, rowIndex, { value })}
                           />
                         </label>
                       ) : (

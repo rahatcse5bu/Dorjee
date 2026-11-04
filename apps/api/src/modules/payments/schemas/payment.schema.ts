@@ -14,6 +14,13 @@ export class Payment {
   @Prop({ required: true, default: 500 })
   amountBdt!: number;
 
+  // The plan this payment buys; see subscriptions/plans.ts.
+  @Prop({ required: true, default: "MONTHLY" })
+  planCode!: string;
+
+  @Prop({ required: true, default: 1 })
+  months!: number;
+
   @Prop({ required: true, enum: ["bkash_manual", "nagad_manual"] })
   method!: "bkash_manual" | "nagad_manual";
 

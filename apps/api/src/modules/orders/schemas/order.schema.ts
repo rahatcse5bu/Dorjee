@@ -29,7 +29,7 @@ class OrderItem {
   quantity!: number;
 
   @Prop({ type: Object, default: {} })
-  measurements!: Record<string, string | number>;
+  measurements!: Record<string, string | number | boolean>;
 
   @Prop({ type: String, enum: FABRIC_SOURCES })
   fabricSource?: string;
@@ -106,7 +106,7 @@ export class Order {
 
   // Legacy field kept for backward compatibility.
   @Prop({ type: Object, default: {} })
-  measurements!: Record<string, string | number>;
+  measurements!: Record<string, string | number | boolean>;
 
   @Prop({ required: true, default: "draft" })
   status!: string;

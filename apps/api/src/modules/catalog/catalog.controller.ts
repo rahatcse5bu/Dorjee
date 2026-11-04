@@ -30,6 +30,11 @@ export class CatalogController {
   @Put("cloth-types")
   @RequirePermission(["catalog", "manage"])
   updateClothTypes(@Param("shopId") shopId: string, @Body() payload: UpdateClothTypesDto) {
-    return this.catalogService.updateClothTypes(shopId, payload.clothTypes ?? [], payload.clothTypeMeasurements);
+    return this.catalogService.updateClothTypes(
+      shopId,
+      payload.clothTypes ?? [],
+      payload.clothTypeMeasurements,
+      payload.booleanMeasurements,
+    );
   }
 }

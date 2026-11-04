@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Inter:wght@500;700;800&display=block" rel="stylesheet">
+<style>
+  :root{
+    --teal:#177e89; --teal-d:#0f5a62; --teal-l:#e3f3f4; --amber:#f2a33a; --amber-d:#b86e0e;
+    --ink:#132a2e; --muted:#5d7276; --cream:#fbf7f0; --paper:#fffdf8; --red:#d64545; --green:#1f9d6b;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:1920px;height:1080px;overflow:hidden;background:var(--cream)}
+  body{font-family:'Hind Siliguri','Bangla Sangam MN',sans-serif;color:var(--ink)}
+  .en{font-family:'Inter',sans-serif}
+  #stage{position:absolute;inset:0;overflow:hidden}
+  .bg{position:absolute;inset:0;background:
+      radial-gradient(1200px 700px at 85% 10%, rgba(23,126,137,.12), transparent 60%),
+      radial-gradient(900px 600px at 5% 95%, rgba(242,163,58,.14), transparent 60%), var(--cream)}
+  .bg .grid{position:absolute;inset:-200px;background-image:
+      linear-gradient(rgba(23,126,137,.06) 2px, transparent 2px),
+      linear-gradient(90deg, rgba(23,126,137,.06) 2px, transparent 2px);background-size:80px 80px}
+  .scene{position:absolute;inset:0;opacity:0}
+  [data-in]{opacity:0;will-change:transform,opacity}
+  h1{font-size:96px;font-weight:700;line-height:1.15;letter-spacing:-.5px}
+  h2{font-size:72px;font-weight:700;line-height:1.2}
+  .kicker{font-size:30px;font-weight:600;color:var(--teal);letter-spacing:1px}
+  .hl{color:var(--teal)} .hl2{color:var(--amber-d)}
+  .card{background:#fff;border-radius:36px;box-shadow:0 30px 80px rgba(19,42,46,.14),0 4px 14px rgba(19,42,46,.06);border:1px solid rgba(19,42,46,.06)}
+  .left{position:absolute;left:150px;top:50%;transform:translateY(-50%);width:760px}
+  .left p{font-size:40px;color:var(--muted);margin-top:28px;line-height:1.5}
+  .num{font-feature-settings:"tnum"}
+
+  /* subtitles */
+  #sub{position:absolute;left:50%;bottom:40px;transform:translateX(-50%);max-width:1760px;white-space:nowrap;text-align:center;
+       font-size:36px;font-weight:500;color:#fff;background:rgba(19,42,46,.85);padding:10px 34px;border-radius:16px;line-height:1.5;opacity:0}
+
+  /* progress stitch at top */
+  #stitch{position:absolute;left:0;top:0;height:8px;background:repeating-linear-gradient(90deg,var(--teal) 0 26px,transparent 26px 40px)}
+
+  /* S1 messy notebook */
+  #s1{background:#2a2420}
+  #s1 .dark{position:absolute;inset:0;background:radial-gradient(900px 600px at 50% 40%, #4a3e34, #1f1a17)}
+  .note{position:absolute;background:#f6ecd3;color:#3b2f22;font-size:44px;padding:36px 44px;border-radius:6px;box-shadow:0 20px 50px rgba(0,0,0,.45);line-height:1.5;font-weight:500}
+  .note.lined{background:repeating-linear-gradient(#f6ecd3 0 64px,#c9d6e3 64px 66px);}
+  .note .x{position:absolute;left:30px;right:30px;top:50%;height:6px;background:var(--red);border-radius:3px;transform-origin:left}
+  #s1 h1{position:absolute;left:0;right:0;top:150px;text-align:center;color:#fff;font-size:104px}
+  .tag{position:absolute;background:var(--red);color:#fff;font-weight:700;font-size:48px;padding:14px 34px;border-radius:999px;box-shadow:0 14px 30px rgba(214,69,69,.4)}
+
+  /* S2 logo */
+  .logo{width:260px;height:260px;border-radius:64px;background:linear-gradient(145deg,#1d97a4,var(--teal) 55%,var(--teal-d));display:grid;place-items:center;color:#fff;font:800 170px/1 'Inter',sans-serif;box-shadow:0 40px 90px rgba(23,126,137,.4)}
+  #s2 .center,#s8 .center{position:absolute;inset:0 0 110px 0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+  .word{font-size:150px;font-weight:700;margin-top:40px;line-height:1.1}
+  .word .en{font-size:70px;color:var(--muted);font-weight:700;margin-left:24px;vertical-align:middle}
+  .tagline{font-size:48px;color:var(--muted);margin-top:18px}
+  .seam{position:absolute;left:0;right:0;height:6px}
+  .seam i{position:absolute;inset:0;background:repeating-linear-gradient(90deg,var(--amber) 0 30px,transparent 30px 48px);transform-origin:left}
+
+  /* S3 customer measurement */
+  #s3 .panel{position:absolute;right:150px;top:110px;width:820px;padding:40px 56px}
+  .avatar{width:110px;height:110px;border-radius:50%;background:var(--teal-l);color:var(--teal);display:grid;place-items:center;font-size:54px;font-weight:700}
+  .row{display:flex;justify-content:space-between;align-items:center;padding:10px 26px;border-radius:16px;background:#f6f8f8;font-size:36px;margin-top:10px}
+  .row b{font-weight:700;color:var(--teal-d)}
+  .chip{display:inline-flex;align-items:center;gap:12px;padding:12px 26px;border-radius:999px;font-size:32px;font-weight:600}
+  .chip.ok{background:#e2f6ec;color:var(--green)}
+  .cursor{position:absolute;width:60px;height:60px;z-index:5}
+
+  /* S4 order */
+  #s4 .panel{position:absolute;right:130px;top:140px;width:880px;padding:50px 56px}
+  .meta{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:30px}
+  .meta div{background:#f6f8f8;border-radius:18px;padding:20px 26px;font-size:30px;color:var(--muted)}
+  .meta div b{display:block;font-size:38px;color:var(--ink);margin-top:4px}
+  .timeline{position:relative;margin-top:50px;height:150px}
+  .timeline .track{position:absolute;left:40px;right:40px;top:34px;height:8px;background:#e5ecec;border-radius:4px}
+  .timeline .fill{position:absolute;left:40px;top:34px;height:8px;background:var(--teal);border-radius:4px}
+  .step{position:absolute;top:0;width:150px;margin-left:-75px;text-align:center;font-size:28px;color:var(--muted)}
+  .step .dot{width:76px;height:76px;border-radius:50%;margin:0 auto 12px;background:#fff;border:6px solid #e5ecec;display:grid;place-items:center;font-size:34px;color:#fff;font-weight:700}
+  .step.on .dot{background:var(--teal);border-color:var(--teal)}
+  .step.on{color:var(--ink);font-weight:600}
+
+  /* S5 payments */
+  #s5 .panel{position:absolute;left:130px;top:110px;width:760px;padding:50px 56px}
+  .line{display:flex;justify-content:space-between;font-size:40px;padding:16px 0;border-bottom:2px dashed #e5ecec}
+  .line.due{border:0;margin-top:14px;padding:26px 30px;border-radius:22px;background:#fff4e3;color:var(--amber-d);font-weight:700;font-size:50px}
+  .memo{position:absolute;width:440px;height:600px;background:var(--paper);border-radius:14px;padding:40px;box-shadow:0 30px 70px rgba(19,42,46,.2);font-size:28px;color:var(--muted)}
+  .memo h3{font-size:36px;color:var(--ink);margin-bottom:6px}
+  .memo .bar{height:16px;border-radius:8px;background:#edf1f1;margin-top:20px}
+  .memo .stamp{position:absolute;right:30px;bottom:40px;border:5px solid var(--teal);color:var(--teal);font-weight:700;font-size:34px;padding:8px 22px;border-radius:12px;transform:rotate(-10deg)}
+  .memo .tear{position:absolute;left:0;right:0;top:-12px;height:24px;background:radial-gradient(circle at 12px 0,transparent 12px,var(--paper) 13px) repeat-x;background-size:24px 24px}
+
+  /* S6 roles */
+  #s6 .roles{position:absolute;right:120px;top:110px;width:900px;display:grid;grid-template-columns:1fr 1fr;gap:30px}
+  .role{padding:40px;display:flex;gap:28px;align-items:center}
+  .role .ic{width:100px;height:100px;border-radius:28px;display:grid;place-items:center;font-size:52px;flex:none}
+  .role h3{font-size:44px} .role small{font-size:28px;color:var(--muted);display:block;margin-top:4px}
+  .toggle{position:absolute;right:120px;top:640px;width:900px;height:130px;padding:14px;border-radius:999px;background:#fff;box-shadow:0 20px 50px rgba(19,42,46,.12);display:flex}
+  .toggle .knob{position:absolute;top:14px;width:436px;height:102px;border-radius:999px;background:var(--teal)}
+  .toggle span{position:relative;flex:1;display:grid;place-items:center;font-size:44px;font-weight:700;z-index:1}
+
+  /* S7 pricing */
+  #s7 .price{position:absolute;right:170px;top:130px;width:760px;padding:70px 64px 60px;text-align:center;overflow:hidden}
+  .ribbon{position:absolute;right:-90px;top:60px;transform:rotate(35deg);background:var(--amber);color:#fff;font-weight:700;font-size:32px;padding:12px 120px}
+  .big{font-size:200px;font-weight:700;line-height:1;color:var(--teal);margin-top:24px}
+  .big small{font-size:56px;color:var(--muted);font-weight:600}
+  .pay{display:flex;gap:24px;justify-content:center;margin-top:44px}
+  .pay span{padding:18px 44px;border-radius:20px;background:#f3f5f5;font-size:40px;font-weight:700;color:var(--ink)}
+  .trial{margin-top:44px;background:var(--teal-l);color:var(--teal-d);font-size:44px;font-weight:700;border-radius:24px;padding:26px}
+
+  /* S8 CTA */
+  .cta{margin-top:56px;background:var(--teal);color:#fff;font-size:52px;font-weight:700;padding:30px 80px;border-radius:999px;box-shadow:0 24px 60px rgba(23,126,137,.4)}
+  .feat{display:flex;gap:22px;margin-top:40px}
+  .feat span{font-size:32px;padding:12px 28px;border-radius:999px;background:#fff;border:2px solid #dbe7e8;color:var(--teal-d);font-weight:600}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="bg"><div class="grid"></div></div>
+
+  <!-- S1: problem -->
+  <section class="scene" id="s1">
+    <div class="dark"></div>
+    <h1 data-in="0.2" data-a="down">খাতা-কলমের <span style="color:var(--amber)">ঝামেলা?</span></h1>
+    <div class="note lined" style="left:230px;top:430px;transform:rotate(-7deg);width:520px" data-in="0.6" data-a="drop" data-r="-7">
+      রহিম — বুক ৩৮<br>কোমর ৩২ ... ?<br>হাতা <span style="opacity:.5">??</span>
+      <div class="x" data-in="2.6" data-a="strike"></div>
+    </div>
+    <div class="note" style="left:780px;top:520px;transform:rotate(4deg);width:420px" data-in="1.1" data-a="drop" data-r="4">
+      ডেলিভারি কবে?<br><span style="font-size:36px;opacity:.7">১২ তারিখ? ১৫?</span>
+    </div>
+    <div class="note lined" style="left:1240px;top:420px;transform:rotate(8deg);width:470px" data-in="1.6" data-a="drop" data-r="8">
+      করিম — অগ্রিম ৫০০<br>বাকি ... ?<br><span style="opacity:.55">হিসাব মিলছে না</span>
+    </div>
+    <div class="tag" style="left:1380px;top:780px" data-in="3.2" data-a="pop">বাকি কত?</div>
+    <div class="tag" style="left:330px;top:800px;background:var(--amber-d)" data-in="3.6" data-a="pop">মাপ হারিয়ে গেছে!</div>
+  </section>
+
+  <!-- S2: brand intro -->
+  <section class="scene" id="s2">
+    <div class="seam" style="top:170px"><i data-in="0.1" data-a="draw" data-d="1.4"></i></div>
+    <div class="seam" style="bottom:170px"><i data-in="0.3" data-a="draw" data-d="1.4"></i></div>
+    <div class="center">
+      <div class="logo" data-in="1.6" data-a="logo">D</div>
+      <div class="word" data-in="2.3" data-a="up">দর্জি<span class="en">Dorjee</span></div>
+      <div class="tagline" data-in="3.4" data-a="up">আপনার টেইলারিং ব্যবসার <b class="hl">স্মার্ট সহকারী</b></div>
+    </div>
+  </section>
+
+  <!-- S3: customers & measurements -->
+  <section class="scene" id="s3">
+    <div class="left">
+      <div class="kicker" data-in="0.1" data-a="up">কাস্টমার ও মাপ</div>
+      <h1 data-in="0.3" data-a="up" style="margin-top:14px">মাপ রাখুন<br><span class="hl">একবারেই</span></h1>
+      <p data-in="0.7" data-a="up">পরের বার এক ক্লিকেই সব মাপ হাতের কাছে।</p>
+    </div>
+    <div class="panel card" data-in="0.4" data-a="right">
+      <div style="display:flex;gap:28px;align-items:center">
+        <div class="avatar">র</div>
+        <div><div style="font-size:48px;font-weight:700">রহিম উদ্দিন</div><div class="en" style="font-size:30px;color:var(--muted)">01712-345678</div></div>
+      </div>
+      <div style="margin-top:24px;font-size:30px;color:var(--muted);font-weight:600">পাঞ্জাবির মাপ (ইঞ্চি)</div>
+      <div class="row" data-in="1.0" data-a="up">লম্বা <b class="num">৪২</b></div>
+      <div class="row" data-in="1.25" data-a="up">বুক <b class="num">৩৮</b></div>
+      <div class="row" data-in="1.5" data-a="up">কোমর <b class="num">৩৪</b></div>
+      <div class="row" data-in="1.75" data-a="up">হাতা <b class="num">২৪</b></div>
+      <div class="row" data-in="2.0" data-a="up">কাঁধ <b class="num">১৮</b></div>
+      <div style="margin-top:22px" data-in="2.8" data-a="pop"><span class="chip ok">✓ মাপ সংরক্ষিত</span></div>
+    </div>
+  </section>
+
+  <!-- S4: orders -->
+  <section class="scene" id="s4">
+    <div class="left" style="width:700px">
+      <div class="kicker" data-in="0.1" data-a="up">অর্ডার ম্যানেজমেন্ট</div>
+      <h1 data-in="0.3" data-a="up" style="margin-top:14px">প্রতিটি অর্ডার<br><span class="hl">চোখের সামনে</span></h1>
+      <p data-in="0.7" data-a="up">ডেলিভারির তারিখ, কারিগর আর কাজের অবস্থা — সব এক নজরে।</p>
+    </div>
+    <div class="panel card" data-in="0.4" data-a="right">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-size:50px;font-weight:700">অর্ডার <span class="hl num">#১০২৪</span></div>
+        <span class="chip" style="background:#fff4e3;color:var(--amber-d)">২টি পাঞ্জাবি</span>
+      </div>
+      <div class="meta">
+        <div data-in="1.0" data-a="up">ডেলিভারি<b>১৫ নভেম্বর</b></div>
+        <div data-in="1.6" data-a="up">কারিগর<b>✂ সেলিম মিয়া</b></div>
+      </div>
+      <div class="timeline" id="tl">
+        <div class="track"></div><div class="fill" id="tlfill"></div>
+        <div class="step" style="left:40px"><div class="dot">✓</div>গ্রহণ</div>
+        <div class="step" style="left:212px"><div class="dot">✓</div>কাটিং</div>
+        <div class="step" style="left:384px"><div class="dot">✓</div>সেলাই</div>
+        <div class="step" style="left:556px"><div class="dot">✓</div>প্রস্তুত</div>
+        <div class="step" style="left:728px"><div class="dot">✓</div>ডেলিভারি</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- S5: payments + memo -->
+  <section class="scene" id="s5">
+    <div class="panel card" data-in="0.1" data-a="left">
+      <div class="kicker">পেমেন্টের হিসাব</div>
+      <div class="line" style="margin-top:20px" data-in="0.5" data-a="up">মোট বিল <b class="num">৳২,৫০০</b></div>
+      <div class="line" data-in="0.9" data-a="up">ডিসকাউন্ট <b class="num" style="color:var(--green)">−৳১০০</b></div>
+      <div class="line" data-in="1.3" data-a="up">অগ্রিম <b class="num">৳১,০০০</b></div>
+      <div class="line" data-in="1.8" data-a="up">আংশিক পেমেন্ট <b class="num">৳৫০০</b></div>
+      <div class="line due" data-in="2.4" data-a="pop">বাকি <span class="num" id="due">৳৯০০</span></div>
+    </div>
+    <div class="memo" style="left:980px;top:170px" data-in="4.2" data-a="memo" data-r="-5">
+      <div class="tear"></div>
+      <h3>কাস্টমার কপি</h3><span class="num">অর্ডার #১০২৪</span>
+      <div class="bar" style="width:90%"></div><div class="bar" style="width:70%"></div><div class="bar" style="width:80%"></div>
+      <div class="bar" style="width:55%"></div><div class="bar" style="width:75%"></div>
+      <div class="stamp" style="right:auto;left:40px">দর্জি</div>
+    </div>
+    <div class="memo" style="left:1400px;top:200px" data-in="4.7" data-a="memo" data-r="5">
+      <div class="tear"></div>
+      <h3>কারখানার কপি</h3><span>মাপ ও নির্দেশনা</span>
+      <div class="bar" style="width:85%"></div><div class="bar" style="width:60%"></div><div class="bar" style="width:90%"></div>
+      <div class="bar" style="width:65%"></div><div class="bar" style="width:78%"></div>
+      <div class="stamp" style="border-color:var(--amber-d);color:var(--amber-d)">কারিগর</div>
+    </div>
+  </section>
+
+  <!-- S6: roles + language -->
+  <section class="scene" id="s6">
+    <div class="left" style="width:680px">
+      <div class="kicker" data-in="0.1" data-a="up">টিম ও ভাষা</div>
+      <h1 data-in="0.3" data-a="up" style="margin-top:14px">সবার জন্য<br><span class="hl">আলাদা অ্যাক্সেস</span></h1>
+    </div>
+    <div class="roles">
+      <div class="role card" data-in="0.5" data-a="pop"><div class="ic" style="background:#e3f3f4;color:var(--teal)">👔</div><div><h3>ম্যানেজার</h3><small>অর্ডার ও টিম</small></div></div>
+      <div class="role card" data-in="0.8" data-a="pop"><div class="ic" style="background:#fff4e3">✂️</div><div><h3>কারিগর</h3><small>নিজের কাজ</small></div></div>
+      <div class="role card" data-in="1.1" data-a="pop"><div class="ic" style="background:#e2f6ec">🧾</div><div><h3>হিসাবরক্ষক</h3><small>পেমেন্ট ও বাকি</small></div></div>
+      <div class="role card" data-in="1.4" data-a="pop"><div class="ic" style="background:#f0ecfb">🧑‍💼</div><div><h3>স্টাফ</h3><small>কাস্টমার ও মাপ</small></div></div>
+    </div>
+    <div class="toggle" data-in="3.4" data-a="up">
+      <div class="knob" id="knob"></div>
+      <span id="lbn">বাংলা</span><span class="en" id="len">English</span>
+    </div>
+  </section>
+
+  <!-- S7: pricing -->
+  <section class="scene" id="s7">
+    <div class="left" style="width:760px">
+      <div class="kicker" data-in="0.1" data-a="up">সহজ মূল্য</div>
+      <h1 data-in="0.3" data-a="up" style="margin-top:14px">কোনো লুকানো<br><span class="hl2">খরচ নেই</span></h1>
+    </div>
+    <div class="price card" data-in="0.3" data-a="right">
+      <div class="ribbon">ফ্রি ট্রায়াল</div>
+      <div style="font-size:40px;color:var(--muted);font-weight:600">মাসিক প্ল্যান</div>
+      <div class="big num">৳<span id="price">৫০০</span><small>/মাস</small></div>
+      <div class="pay">
+        <span data-in="2.6" data-a="pop">বিকাশ</span>
+        <span data-in="2.9" data-a="pop">নগদ</span>
+      </div>
+      <div class="trial" data-in="4.0" data-a="pop">🎁 প্রথম ৭ দিন একদম ফ্রি</div>
+    </div>
+  </section>
+
+  <!-- S8: CTA -->
+  <section class="scene" id="s8">
+    <div class="center">
+      <div class="logo" style="width:200px;height:200px;font-size:130px;border-radius:50px" data-in="0.1" data-a="logo">D</div>
+      <div class="word" style="font-size:120px;margin-top:30px" data-in="0.4" data-a="up">দর্জি<span class="en" style="font-size:56px">Dorjee</span></div>
+      <div class="tagline" style="font-size:52px;color:var(--ink);font-weight:600" data-in="0.8" data-a="up">মাপ থেকে ডেলিভারি, <span class="hl">সবকিছু এক অ্যাপে</span></div>
+      <div class="feat" data-in="1.6" data-a="up"><span>কাস্টমার</span><span>অর্ডার</span><span>পেমেন্ট</span><span>মেমো</span><span>স্টাফ</span></div>
+      <div class="cta" data-in="3.0" data-a="pop">আজই শুরু করুন →</div>
+    </div>
+  </section>
+
+  <div id="sub"></div>
+  <div id="stitch"></div>
+</div>
+
+<script>
+// SCENES is injected by the renderer: [{id,start,dur,text}], TOTAL
+window.SCENES = window.SCENES || [];
+const clamp=(x,a=0,b=1)=>Math.min(b,Math.max(a,x));
+const eo=x=>1-Math.pow(1-x,3);
+const eback=x=>{const c=1.7;return 1+(c+1)*Math.pow(x-1,3)+c*Math.pow(x-1,2)};
+const bn=n=>String(n).replace(/\d/g,d=>'০১২৩৪৫৬৭৮৯'[d]);
+const fmt=n=>bn(n.toLocaleString('en-IN'));
+
+function animEl(el, lt){
+  const delay=+el.dataset.in, d=+(el.dataset.d||0.7), a=el.dataset.a, r=+(el.dataset.r||0);
+  const p=clamp((lt-delay)/d), e=eo(p);
+  let o=p>0?Math.min(1,p*2.2):0, tf='';
+  switch(a){
+    case 'up': tf=`translateY(${(1-e)*50}px)`; break;
+    case 'down': tf=`translateY(${-(1-e)*50}px)`; break;
+    case 'left': tf=`translateX(${-(1-e)*140}px)`; break;
+    case 'right': tf=`translateX(${(1-e)*140}px)`; break;
+    case 'pop': tf=`scale(${0.6+0.4*eback(p)})`; break;
+    case 'logo': tf=`scale(${0.3+0.7*eback(p)}) rotate(${(1-e)*-25}deg)`; break;
+    case 'drop': tf=`translateY(${-(1-e)*400}px) rotate(${r+(1-e)*20}deg)`; break;
+    case 'memo': tf=`translateY(${(1-e)*500}px) rotate(${r*e}deg)`; break;
+    case 'strike': tf=`scaleX(${e})`; o=p>0?1:0; break;
+    case 'draw': tf=`scaleX(${e})`; o=p>0?1:0; break;
+  }
+  el.style.opacity=o; el.style.transform=tf;
+}
+
+function render(t){
+  const S=window.SCENES;
+  let active=null;
+  for(const s of S){
+    const el=document.getElementById(s.id);
+    const lt=t-s.start, fi=0.45;
+    let op=0;
+    if(lt>-fi && lt<s.dur+fi){ op=Math.min(clamp((lt+fi)/fi), clamp((s.dur+fi-lt)/fi)); }
+    el.style.opacity=op;
+    el.style.transform=`scale(${1+0.02*clamp(lt/s.dur)})`;
+    if(op>0){ el.querySelectorAll('[data-in]').forEach(x=>animEl(x,lt)); hooks[s.id]&&hooks[s.id](lt,s.dur); }
+    if(lt>=0 && lt<s.dur) active=s;
+  }
+  // subtitles (voice timing within scene: starts at s.vo)
+  const sub=document.getElementById('sub');
+  if(active && active.id!=='s8'){
+    const lt=t-active.start-active.vo;
+    const parts=active.text.split(/(?<=[।?])\s+/);
+    const tot=parts.reduce((a,p)=>a+p.length,0);
+    let acc=0, cur=parts[parts.length-1];
+    for(const p of parts){ const b=(acc+p.length)/tot*active.vdur; if(lt<b){cur=p;break;} acc+=p.length; }
+    const first=cur===parts[0], last=cur===parts[parts.length-1];
+    const o=(first?clamp((lt+0.15)/0.25):1)*(last?clamp((active.vdur+0.35-lt)/0.25):1);
+    sub.style.opacity=o; if(sub.textContent!==cur) sub.textContent=cur;
+    sub.style.background = active.id==='s1' ? 'rgba(0,0,0,.6)' : 'rgba(19,42,46,.85)';
+  } else sub.style.opacity=0;
+  const total=window.TOTAL||1;
+  document.getElementById('stitch').style.width=(100*clamp(t/total))+'%';
+  document.querySelector('.bg .grid').style.transform=`translate(${-(t*8)%80}px,${-(t*5)%80}px)`;
+}
+
+const hooks={
+  s4(lt){
+    const p=clamp((lt-2.4)/3.6), steps=document.querySelectorAll('#s4 .step');
+    const pos=[40,212,384,556,728], idx=p*4; // fill to 4th step (প্রস্তুত) -> last at end
+    const reach=Math.min(3.6, idx*1.0);
+    const fx=pos[0]+(pos[4]-pos[0])*eo(clamp(reach/4));
+    document.getElementById('tlfill').style.width=(fx-40)+'px';
+    steps.forEach((s,i)=>s.classList.toggle('on', lt>1.8 && fx>=pos[i]-2));
+  },
+  s5(lt){
+    const p=eo(clamp((lt-2.5)/1.2));
+    const v=Math.round(2400 - 1500*p);
+    document.getElementById('due').textContent='৳'+fmt(v);
+  },
+  s6(lt){
+    const flips=[4.6,5.6,6.6];
+    let side=0; flips.forEach(f=>{ if(lt>f) side=1-side; });
+    let last=flips.filter(f=>lt>f).pop();
+    let x = side?450:0;
+    if(last!==undefined){ const p=eo(clamp((lt-last)/0.35)); x = side? 450*p : 450*(1-p); }
+    document.getElementById('knob').style.left=(14+x)+'px';
+    document.getElementById('lbn').style.color= x<225?'#fff':'var(--ink)';
+    document.getElementById('len').style.color= x>=225?'#fff':'var(--ink)';
+  },
+  s7(lt){
+    const p=eo(clamp((lt-0.8)/1.4));
+    document.getElementById('price').textContent=fmt(Math.round(500*p));
+  }
+};
+window.render=render;
+</script>
+</body>
+</html>

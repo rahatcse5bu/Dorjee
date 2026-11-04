@@ -38,6 +38,11 @@ export class Shop {
   @Prop({ type: Object, default: {} })
   clothTypeMeasurements!: Record<string, string[]>;
 
+  // Measurement labels answered yes/no instead of a number, e.g. ["Hata", "Button", "Koti"].
+  // Their values are stored as booleans.
+  @Prop({ type: [String], default: [] })
+  booleanMeasurements!: string[];
+
   // Owner overrides of the default role permissions; see permissions.constants.ts.
   @Prop({ type: Object, default: undefined })
   rolePermissions?: Record<string, Record<string, string>>;

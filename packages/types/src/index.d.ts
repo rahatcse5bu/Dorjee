@@ -16,7 +16,7 @@ export interface Customer {
     name: string;
     phone: string;
     address?: string;
-    measurements: Record<string, string | number>;
+    measurements: Record<string, string | number | boolean>;
 }
 export interface Order {
     id: string;

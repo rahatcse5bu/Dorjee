@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Printer, Scissors } from "lucide-react";
 import { ItemFabricDetails } from "../../../../components/orders/OrderBits";
+import { MeasurementValue } from "../../../../components/orders/MeasurementField";
 import { btnPrimary, btnSecondary } from "../../../../components/ui";
 import { apiRequest } from "../../../../lib/api";
 import { useI18n } from "../../../../lib/i18n";
@@ -199,7 +200,7 @@ export default function PrintMemoPage() {
                       {measurements.map(([label, value]) => (
                         <div key={label} className="flex justify-between gap-2 border-b border-dotted border-ink/30">
                           <span className="text-ink/65">{label}</span>
-                          <span className="font-semibold">{typeof value === "number" ? num(value) : value}</span>
+                          <span className="font-semibold"><MeasurementValue value={value} /></span>
                         </div>
                       ))}
                     </div>

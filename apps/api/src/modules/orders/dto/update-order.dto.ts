@@ -32,7 +32,7 @@ class UpdateOrderItemDto {
 
   @IsOptional()
   @IsObject()
-  measurements?: Record<string, string | number>;
+  measurements?: Record<string, string | number | boolean>;
 
   @IsOptional()
   @IsIn(FABRIC_SOURCES)
@@ -75,7 +75,7 @@ export class UpdateOrderDto {
 
   @IsOptional()
   @IsObject()
-  measurements?: Record<string, string | number>;
+  measurements?: Record<string, string | number | boolean>;
 
   @IsOptional()
   @IsIn(ORDER_STATUSES)

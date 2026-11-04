@@ -26,6 +26,7 @@ export class PaymentsController {
       method: payload.method,
       transactionId: payload.transactionId,
       proofImageUrl: payload.proofImageUrl,
+      planCode: payload.planCode,
     });
   }
 

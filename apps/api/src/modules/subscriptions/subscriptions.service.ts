@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
+import { addMonths, Plan } from "./plans";
 import { Subscription, SubscriptionDocument } from "./schemas/subscription.schema";
 
 @Injectable()
@@ -44,13 +45,24 @@ export class SubscriptionsService {
     return subscription;
   }
 
-  activate(shopId: string, nextBillingDate: Date) {
+  /**
+   * Activates a paid plan. Time still left on an active subscription is kept:
+   * the plan's months are added to its billing date, otherwise to today.
+   */
+  async activate(shopId: string, plan: Plan) {
+    const current = await this.subscriptionModel.findOne({ shopId }).lean();
+    const now = new Date();
+    const paidUntil = current?.status === "active" ? current.nextBillingDate : null;
+    const from = paidUntil && paidUntil > now ? paidUntil : now;
     return this.subscriptionModel
       .findOneAndUpdate(
         { shopId },
         {
           status: "active",
-          nextBillingDate,
+          planCode: plan.code,
+          amountBdt: plan.priceBdt,
+          months: plan.months,
+          nextBillingDate: addMonths(from, plan.months),
           trialEndsAt: null,
         },
         { new: true, upsert: true },

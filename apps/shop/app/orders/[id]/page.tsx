@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { DraftItem, draftsToItems, ItemsEditor, itemToDraft } from "../../../components/orders/ItemsEditor";
 import { AssigneeSelect } from "../../../components/orders/AssigneeSelect";
+import { MeasurementValue } from "../../../components/orders/MeasurementField";
 import { DeliveryLabel, ItemFabricDetails } from "../../../components/orders/OrderBits";
 import { useToast } from "../../../components/Toast";
 import {
@@ -383,7 +384,7 @@ export default function OrderDetailPage() {
                         {measurements.map(([label, value]) => (
                           <div key={label} className="rounded-lg bg-paper px-2.5 py-1.5">
                             <dt className="truncate text-[11px] text-ink/50">{label}</dt>
-                            <dd className="font-semibold text-ink">{typeof value === "number" ? num(value) : value}</dd>
+                            <dd className="font-semibold text-ink"><MeasurementValue value={value} /></dd>
                           </div>
                         ))}
                       </dl>

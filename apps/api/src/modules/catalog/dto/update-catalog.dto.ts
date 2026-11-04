@@ -15,4 +15,10 @@ export class UpdateClothTypesDto {
   @IsOptional()
   @IsObject()
   clothTypeMeasurements?: Record<string, string[]>;
+
+  // Labels answered yes/no; sanitised by CatalogService.
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  booleanMeasurements?: string[];
 }

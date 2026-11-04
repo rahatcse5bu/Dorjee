@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Plus, Ruler, Save, Scissors, Trash2, X } from "lucide-react";
+import { Plus, Ruler, Save, Scissors, ToggleRight, Trash2, X } from "lucide-react";
 import { useToast } from "../../components/Toast";
 import { Alert, btnIcon, btnPrimary, cardClass, EmptyState, inputClass, PageHeader, Skeleton } from "../../components/ui";
 import { apiRequest } from "../../lib/api";
@@ -15,6 +15,7 @@ const SUGGESTED_BN = ["শার্ট", "প্যান্ট", "পাঞ্�
 
 /** Each cloth type with the measurement names it owns. */
 type Garments = Array<{ name: string; measurements: string[] }>;
+type Kind = "number" | "boolean";
 
 function toGarments(catalog: Catalog): Garments {
   // A type without its own list starts with what orders show today (the shop-wide labels).
@@ -23,6 +24,9 @@ function toGarments(catalog: Catalog): Garments {
 
 const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
 
+/** What the page compares against to tell if there are unsaved changes. */
+const snapshot = (garments: Garments, booleans: string[]) => JSON.stringify([garments, [...booleans].sort()]);
+
 export default function ClothTypesPage() {
   const { t, lang, num } = useI18n();
   const toast = useToast();
@@ -30,9 +34,12 @@ export default function ClothTypesPage() {
   const canEdit = usePermissions().can("catalog", "manage");
 
   const [garments, setGarments] = useState<Garments>([]);
+  // Measurement names answered yes/no; shop-wide, so a name is the same kind everywhere.
+  const [booleans, setBooleans] = useState<string[]>([]);
   const [baseline, setBaseline] = useState("");
   const [newType, setNewType] = useState("");
   const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const [draftKinds, setDraftKinds] = useState<Record<string, Kind>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -42,7 +49,8 @@ export default function ClothTypesPage() {
         const catalog = normalizeCatalog(await apiRequest<Partial<Catalog>>(`/shops/${shopId}/catalog`, {}, token));
         const initial = toGarments(catalog);
         setGarments(initial);
-        setBaseline(JSON.stringify(initial));
+        setBooleans(catalog.booleanMeasurements);
+        setBaseline(snapshot(initial, catalog.booleanMeasurements));
       } finally {
         setLoading(false);
       }
@@ -50,7 +58,17 @@ export default function ClothTypesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const dirty = JSON.stringify(garments) !== baseline;
+  // Only yes/no names some garment still uses count.
+  const usedBooleans = useMemo(
+    () => booleans.filter((b) => garments.some((g) => g.measurements.includes(b))),
+    [booleans, garments],
+  );
+  const dirty = snapshot(garments, usedBooleans) !== baseline;
+  const isBool = (label: string) => booleans.includes(label);
+
+  function setKind(label: string, kind: Kind) {
+    setBooleans((prev) => (kind === "boolean" ? [...prev.filter((b) => b !== label), label] : prev.filter((b) => b !== label)));
+  }
 
   // Every measurement name in use, so one garment can reuse another's in a click.
   const allNames = useMemo(() => {
@@ -66,7 +84,7 @@ export default function ClothTypesPage() {
     setNewType("");
   }
 
-  function addMeasurement(garment: string, value: string) {
+  function addMeasurement(garment: string, value: string, kind?: Kind) {
     const label = value.trim();
     if (!label) return;
     const target = garments.find((g) => g.name === garment);
@@ -76,6 +94,8 @@ export default function ClothTypesPage() {
     }
     // Reuse the existing spelling when another garment already has this name.
     const canonical = allNames.find((n) => sameName(n, label)) ?? label;
+    // A name already in use keeps its kind; a new one takes the chosen kind.
+    if (kind && !allNames.some((n) => sameName(n, label))) setKind(canonical, kind);
     setGarments((prev) => prev.map((g) => (g.name === garment ? { ...g, measurements: [...g.measurements, canonical] } : g)));
     setDrafts((d) => ({ ...d, [garment]: "" }));
   }
@@ -97,11 +117,13 @@ export default function ClothTypesPage() {
           body: JSON.stringify({
             clothTypes: garments.map((g) => g.name),
             clothTypeMeasurements: Object.fromEntries(garments.map((g) => [g.name, g.measurements])),
+            booleanMeasurements: usedBooleans,
           }),
         },
         token,
       );
-      setBaseline(JSON.stringify(garments));
+      setBooleans(usedBooleans);
+      setBaseline(snapshot(garments, usedBooleans));
       toast(t("clothTypes.saved"));
     } catch (err) {
       toast(errorMessage(err, t("common.somethingWrong")), "error");
@@ -148,6 +170,10 @@ export default function ClothTypesPage() {
                 </button>
               </div>
             </label>
+            <p className="flex items-start gap-1.5 text-xs text-ink/55">
+              <ToggleRight className="mt-px h-3.5 w-3.5 shrink-0 text-amber-600" />
+              {t("clothTypes.kindHint")}
+            </p>
             {typeSuggestions.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {typeSuggestions.map((s) => (
@@ -209,13 +235,33 @@ export default function ClothTypesPage() {
                     {garment.measurements.length === 0 ? (
                       <p className="text-sm text-amber-700">{t("clothTypes.noMeasurementsYet")}</p>
                     ) : (
-                      garment.measurements.map((label) => (
+                      garment.measurements.map((label) => {
+                        const yesNo = isBool(label);
+                        const KindIcon = yesNo ? ToggleRight : Ruler;
+                        return (
                         <span
                           key={label}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-teal/30 bg-teal/[0.07] py-1 pl-2.5 pr-1 text-sm font-medium text-ink"
+                          className={`inline-flex items-center gap-1 rounded-lg border py-1 pl-1 pr-1 text-sm font-medium text-ink ${
+                            yesNo ? "border-amber-300 bg-amber-50" : "border-teal/30 bg-teal/[0.07]"
+                          }`}
                         >
-                          <Ruler className="h-3.5 w-3.5 text-teal/70" />
+                          {canEdit ? (
+                            <button
+                              type="button"
+                              title={t("clothTypes.toggleKind", { label })}
+                              aria-label={t("clothTypes.toggleKind", { label })}
+                              onClick={() => setKind(label, yesNo ? "number" : "boolean")}
+                              className={`inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-white ${
+                                yesNo ? "text-amber-600" : "text-teal/70"
+                              }`}
+                            >
+                              <KindIcon className="h-3.5 w-3.5" />
+                            </button>
+                          ) : (
+                            <KindIcon className={`mx-1 h-3.5 w-3.5 ${yesNo ? "text-amber-600" : "text-teal/70"}`} />
+                          )}
                           {label}
+                          {yesNo && <span className="text-[10px] font-semibold text-amber-700">{t("clothTypes.kindYesNo")}</span>}
                           {canEdit ? (
                             <button
                               type="button"
@@ -229,12 +275,33 @@ export default function ClothTypesPage() {
                             <span className="w-1.5" />
                           )}
                         </span>
-                      ))
+                        );
+                      })
                     )}
                   </div>
 
                   {canEdit && (
                     <div className="mt-auto space-y-2 pt-4">
+                      <div className="inline-flex overflow-hidden rounded-lg ring-1 ring-inset ring-ink/15" role="radiogroup">
+                        {(["number", "boolean"] as const).map((kind) => {
+                          const on = (draftKinds[garment.name] ?? "number") === kind;
+                          return (
+                            <button
+                              key={kind}
+                              type="button"
+                              role="radio"
+                              aria-checked={on}
+                              onClick={() => setDraftKinds((d) => ({ ...d, [garment.name]: kind }))}
+                              className={`inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold transition ${
+                                on ? (kind === "boolean" ? "bg-amber-500 text-white" : "bg-teal text-white") : "bg-white text-ink/60 hover:text-teal"
+                              }`}
+                            >
+                              {kind === "boolean" ? <ToggleRight className="h-3.5 w-3.5" /> : <Ruler className="h-3.5 w-3.5" />}
+                              {t(kind === "boolean" ? "clothTypes.kindYesNo" : "clothTypes.kindNumber")}
+                            </button>
+                          );
+                        })}
+                      </div>
                       <div className="flex gap-2">
                         <input
                           className={`${inputClass} py-2`}
@@ -245,13 +312,13 @@ export default function ClothTypesPage() {
                           onKeyDown={(e) => {
                             if (e.key === "Enter") {
                               e.preventDefault();
-                              addMeasurement(garment.name, draft);
+                              addMeasurement(garment.name, draft, draftKinds[garment.name]);
                             }
                           }}
                         />
                         <button
                           type="button"
-                          onClick={() => addMeasurement(garment.name, draft)}
+                          onClick={() => addMeasurement(garment.name, draft, draftKinds[garment.name])}
                           disabled={!draft.trim()}
                           aria-label={t("common.add")}
                           className="inline-flex shrink-0 items-center gap-1 rounded-xl bg-teal/10 px-3 text-sm font-semibold text-teal hover:bg-teal/20 disabled:opacity-40"

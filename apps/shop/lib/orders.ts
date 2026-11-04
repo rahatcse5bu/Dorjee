@@ -1,4 +1,4 @@
-export type Measurements = Record<string, string | number>;
+export type Measurements = Record<string, string | number | boolean>;
 
 export interface Customer {
   _id: string;
@@ -16,16 +16,28 @@ export interface Catalog {
   measurementLabels: string[];
   /** Measurement names owned by each cloth type; a type without an entry uses measurementLabels. */
   clothTypeMeasurements: Record<string, string[]>;
+  /** Labels answered yes/no (e.g. Hata, Button, Koti); their values are booleans. */
+  booleanMeasurements: string[];
 }
 
-export const EMPTY_CATALOG: Catalog = { clothTypes: [], measurementLabels: [], clothTypeMeasurements: {} };
+export const EMPTY_CATALOG: Catalog = {
+  clothTypes: [],
+  measurementLabels: [],
+  clothTypeMeasurements: {},
+  booleanMeasurements: [],
+};
 
 export function normalizeCatalog(raw: Partial<Catalog> | null | undefined): Catalog {
   return {
     clothTypes: raw?.clothTypes ?? [],
     measurementLabels: raw?.measurementLabels ?? [],
     clothTypeMeasurements: raw?.clothTypeMeasurements ?? {},
+    booleanMeasurements: raw?.booleanMeasurements ?? [],
   };
+}
+
+export function isBooleanLabel(catalog: Catalog, label: string) {
+  return catalog.booleanMeasurements.includes(label);
 }
 
 /**
@@ -180,12 +192,19 @@ export function isOverdue(order: Order) {
   return days !== null && days < 0 && OPEN_STATUSES.includes(order.status);
 }
 
-/** Converts the editor's label/value rows into a measurements object. */
+/**
+ * Converts the editor's label/value rows into a measurements object. Yes/no rows
+ * hold "true" / "false" in the editor and are saved as booleans.
+ */
 export function rowsToMeasurements(rows: Array<{ label: string; value: string }>): Measurements {
   return rows.reduce<Measurements>((acc, row) => {
     const label = row.label.trim();
     const raw = row.value.trim();
     if (!label || !raw) return acc;
+    if (raw === "true" || raw === "false") {
+      acc[label] = raw === "true";
+      return acc;
+    }
     const num = Number(raw);
     acc[label] = Number.isNaN(num) ? raw : num;
     return acc;

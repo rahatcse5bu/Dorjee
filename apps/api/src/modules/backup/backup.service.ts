@@ -24,12 +24,13 @@ const date = (v: unknown) => {
 };
 const digits = (phone: string) => phone.replace(/\D/g, "");
 
-/** Keeps only string/number values, e.g. a measurements map. */
-function cleanMeasurements(v: unknown): Record<string, string | number> {
+/** Keeps only string/number/boolean values, e.g. a measurements map. */
+function cleanMeasurements(v: unknown): Record<string, string | number | boolean> {
   if (!isObject(v)) return {};
-  const out: Record<string, string | number> = {};
+  const out: Record<string, string | number | boolean> = {};
   for (const [label, value] of Object.entries(v)) {
     if (typeof value === "number" && Number.isFinite(value)) out[label.slice(0, 80)] = value;
+    else if (typeof value === "boolean") out[label.slice(0, 80)] = value;
     else if (typeof value === "string" && value.trim()) out[label.slice(0, 80)] = value.trim().slice(0, 80);
   }
   return out;
@@ -84,6 +85,7 @@ export class BackupService {
         clothTypes: shop.clothTypes ?? [],
         measurementLabels: shop.measurementLabels ?? [],
         clothTypeMeasurements: shop.clothTypeMeasurements ?? {},
+        booleanMeasurements: shop.booleanMeasurements ?? [],
         rolePermissions: shop.rolePermissions ?? undefined,
       },
       // Staff are listed so assignments can be matched by email on restore; no passwords.
@@ -180,7 +182,7 @@ export class BackupService {
       const _id = new Types.ObjectId();
       customerIdMap.set(String(raw._id), _id.toString());
       existingByPhone.set(digits(phone), _id.toString());
-      const measurementsByType: Record<string, Record<string, string | number>> = {};
+      const measurementsByType: Record<string, Record<string, string | number | boolean>> = {};
       if (isObject(raw.measurementsByType)) {
         for (const [type, values] of Object.entries(raw.measurementsByType)) {
           measurementsByType[type.slice(0, 80)] = cleanMeasurements(values);
@@ -284,6 +286,7 @@ export class BackupService {
   private async restoreCatalog(shopId: string, shop: Shop, saved: Json, mode: RestoreMode, opts: { session?: ClientSession }) {
     const savedTypes = cleanStringList(saved.clothTypes);
     const savedLabels = cleanStringList(saved.measurementLabels);
+    const savedBooleans = cleanStringList(saved.booleanMeasurements);
     const savedMapping: Record<string, string[]> = {};
     if (isObject(saved.clothTypeMeasurements)) {
       for (const [type, labels] of Object.entries(saved.clothTypeMeasurements)) savedMapping[type.slice(0, 80)] = cleanStringList(labels);
@@ -294,6 +297,7 @@ export class BackupService {
       update.clothTypes = savedTypes;
       update.measurementLabels = savedLabels;
       update.clothTypeMeasurements = savedMapping;
+      update.booleanMeasurements = savedBooleans.filter((l) => savedLabels.includes(l));
       if (isObject(saved.rolePermissions)) update.rolePermissions = saved.rolePermissions;
     } else {
       const types = [...(shop.clothTypes ?? [])];
@@ -309,6 +313,9 @@ export class BackupService {
       update.clothTypes = types;
       update.measurementLabels = labels;
       update.clothTypeMeasurements = mapping;
+      update.booleanMeasurements = [...new Set([...(shop.booleanMeasurements ?? []), ...savedBooleans])].filter((l) =>
+        labels.includes(l),
+      );
     }
     await this.shopModel.updateOne({ _id: shopId }, { $set: update }, opts);
   }

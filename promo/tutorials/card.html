@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="bn"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&family=Inter:wght@700;800&display=block" rel="stylesheet">
+<style>
+  html,body{margin:0;height:100%;font-family:'Hind Siliguri','Bangla Sangam MN',sans-serif;color:#132a2e;overflow:hidden;
+    background:radial-gradient(1000px 600px at 85% 10%, rgba(23,126,137,.14), transparent 60%),radial-gradient(800px 500px at 5% 95%, rgba(242,163,58,.16), transparent 60%),#fbf7f0}
+  .wrap{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px}
+  .logo{width:120px;height:120px;border-radius:30px;background:linear-gradient(145deg,#1d97a4,#177e89 55%,#0f5a62);display:grid;place-items:center;color:#fff;font:800 78px/1 Inter,sans-serif;box-shadow:0 24px 60px rgba(23,126,137,.35);animation:pop .7s cubic-bezier(.2,1.4,.4,1) both}
+  .kick{margin-top:22px;font-size:26px;font-weight:600;color:#177e89;letter-spacing:1px;animation:up .6s .25s both}
+  h1{margin:0;font-size:72px;line-height:1.2;font-weight:700;animation:up .6s .4s both}
+  p{margin:6px 0 0;font-size:30px;color:#5d7276;animation:up .6s .55s both}
+  .steps{display:flex;gap:14px;margin-top:30px;flex-wrap:wrap;justify-content:center;max-width:1200px}
+  .steps span{background:#fff;border:2px solid #dbe7e8;border-radius:999px;padding:8px 22px;font-size:24px;font-weight:600;color:#0f5a62;animation:up .5s both}
+  .seam{position:absolute;left:0;right:0;height:5px;background:repeating-linear-gradient(90deg,#f2a33a 0 28px,transparent 28px 44px);transform-origin:left;animation:draw 1.2s both}
+  @keyframes pop{from{transform:scale(.3) rotate(-20deg);opacity:0}}
+  @keyframes up{from{transform:translateY(30px);opacity:0}}
+  @keyframes draw{from{transform:scaleX(0)}}
+</style></head>
+<body>
+<div class="seam" style="top:90px"></div><div class="seam" style="bottom:90px;animation-delay:.2s"></div>
+<div class="wrap">
+  <div class="logo">D</div>
+  <div class="kick" id="kick"></div>
+  <h1 id="title"></h1>
+  <p id="sub"></p>
+  <div class="steps" id="steps"></div>
+</div>
+<script>
+  const q = new URLSearchParams(location.search);
+  kick.textContent = q.get('kick') || '';
+  title.textContent = q.get('title') || '';
+  sub.textContent = q.get('sub') || '';
+  (q.get('steps') || '').split('|').filter(Boolean).forEach((s, i) => {
+    const el = document.createElement('span'); el.textContent = s; el.style.animationDelay = (0.8 + i * 0.15) + 's'; steps.appendChild(el);
+  });
+</script>
+</body></html>
