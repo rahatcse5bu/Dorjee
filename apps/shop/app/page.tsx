@@ -15,6 +15,7 @@ import {
   Users,
 } from "lucide-react";
 import { btnPrimary, btnSecondary } from "../components/ui";
+import { API_BASE } from "../lib/api";
 import { getShopToken } from "../lib/auth";
 import { TranslationKey, useI18n } from "../lib/i18n";
 
@@ -25,6 +26,20 @@ const FEATURES: Array<{ icon: typeof Ruler; title: TranslationKey; body: Transla
   { icon: CalendarClock, title: "home.f4.title", body: "home.f4.body" },
   { icon: Users, title: "home.f5.title", body: "home.f5.body" },
   { icon: Languages, title: "home.f6.title", body: "home.f6.body" },
+];
+
+interface Plan {
+  code: string;
+  months: number;
+  priceBdt: number;
+}
+
+// Matches the API's plan list (subscriptions/plans.ts); the page shows these until it loads.
+const DEFAULT_PLANS: Plan[] = [
+  { code: "MONTHLY", months: 1, priceBdt: 500 },
+  { code: "QUARTERLY", months: 3, priceBdt: 1450 },
+  { code: "HALF_YEARLY", months: 6, priceBdt: 2800 },
+  { code: "YEARLY", months: 12, priceBdt: 5100 },
 ];
 
 const STEPS: Array<{ title: TranslationKey; body: TranslationKey }> = [
@@ -117,10 +132,24 @@ function ProductPreview() {
 }
 
 export default function HomePage() {
-  const { t, lang, setLang, money } = useI18n();
+  const { t, lang, setLang, money, num } = useI18n();
   const [signedIn, setSignedIn] = useState(false);
 
   useEffect(() => setSignedIn(!!getShopToken()), []);
+
+  const [plans, setPlans] = useState<Plan[]>(DEFAULT_PLANS);
+  useEffect(() => {
+    fetch(`${API_BASE}/subscription-plans`, { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((list: Plan[] | null) => {
+        if (Array.isArray(list) && list.length > 0) setPlans(list);
+      })
+      .catch(() => {});
+  }, []);
+  const monthlyPrice = plans.find((p) => p.months === 1)?.priceBdt ?? plans[0].priceBdt;
+  const bestValue = plans.reduce((best, p) => (p.priceBdt / p.months < best.priceBdt / best.months ? p : best), plans[0]);
+  const period = (months: number) =>
+    months === 1 ? t("sub.oneMonth") : months === 12 ? t("sub.oneYear") : t("sub.months", { n: num(months) });
 
   const primaryCta = signedIn ? (
     <Link href="/dashboard" className={`${btnPrimary} px-6 py-3 text-base`}>
@@ -239,12 +268,42 @@ export default function HomePage() {
             <h2 className="text-3xl font-bold text-ink sm:text-4xl">{t("home.pricingTitle")}</h2>
             <p className="mt-3 text-lg text-ink/60">{t("home.pricingSub")}</p>
           </div>
-          <div className="mx-auto mt-10 max-w-md rounded-3xl border border-teal/20 bg-white p-8 text-center shadow-[0_30px_60px_-35px_rgba(23,126,137,0.6)]">
-            <p className="text-5xl font-bold text-ink">{money(500)}</p>
-            <p className="mt-1 text-sm text-ink/55">{t("home.perMonth")}</p>
-            <ul className="mt-6 space-y-3 text-left">
+          <div className="mx-auto mt-10 grid max-w-6xl grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+            {plans.map((plan) => {
+              const best = plan.code === bestValue.code && plan.months > 1;
+              const saving = monthlyPrice * plan.months - plan.priceBdt;
+              return (
+                <div
+                  key={plan.code}
+                  className={`relative flex flex-col rounded-2xl border bg-white px-3 py-5 text-center sm:rounded-3xl sm:p-6 ${
+                    best ? "border-teal shadow-[0_30px_60px_-35px_rgba(23,126,137,0.7)] ring-1 ring-teal" : "border-ink/10"
+                  }`}
+                >
+                  {best && (
+                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-brass px-3 py-1 text-xs font-bold text-white">
+                      {t("sub.bestValue")}
+                    </span>
+                  )}
+                  <p className="text-sm font-semibold uppercase tracking-wider text-ink/55">{period(plan.months)}</p>
+                  <p className="mt-2 text-2xl font-bold text-ink sm:mt-3 sm:text-4xl">{money(plan.priceBdt)}</p>
+                  <p className="mt-1 text-xs text-ink/55 sm:text-sm">
+                    {plan.months === 1 ? t("home.perMonth") : t("sub.monthlyEq", { amount: money(Math.round(plan.priceBdt / plan.months)) })}
+                  </p>
+                  <div className="mt-3 flex min-h-[26px] justify-center">
+                    {saving > 0 && (
+                      <span className="rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-700 sm:px-2.5 sm:text-xs">
+                        {t("sub.save", { amount: money(saving) })}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="mx-auto mt-8 max-w-3xl text-center">
+            <ul className="flex flex-wrap justify-center gap-x-6 gap-y-3">
               {(["home.p1", "home.p2", "home.p3", "home.p4"] as TranslationKey[]).map((key) => (
-                <li key={key} className="flex items-center gap-3 text-sm text-ink/80">
+                <li key={key} className="flex items-center gap-2 text-sm text-ink/80">
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
                     <Check className="h-3 w-3" />
                   </span>
