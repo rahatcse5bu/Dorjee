@@ -42,6 +42,12 @@ const en = {
 
   // Navigation
   "nav.dashboard": "Dashboard",
+  "pwa.title": "Install Dorjee",
+  "pwa.body": "Add Dorjee to your home screen for quick, full-screen access.",
+  "pwa.install": "Install",
+  "pwa.later": "Not now",
+  "pwa.iosHint": "Tap",
+  "pwa.iosHint2": "then “Add to Home Screen”.",
   "nav.orders": "Orders",
   "nav.customers": "Customers",
   "nav.staff": "Staff",
@@ -625,6 +631,12 @@ const bn: Record<TranslationKey, string> = {
   "common.you": "আপনি",
 
   "nav.dashboard": "ড্যাশবোর্ড",
+  "pwa.title": "Dorjee অ্যাপ ইনস্টল করুন",
+  "pwa.body": "দ্রুত ও পূর্ণ স্ক্রিনে ব্যবহারের জন্য হোম স্ক্রিনে যোগ করুন।",
+  "pwa.install": "ইনস্টল",
+  "pwa.later": "এখন না",
+  "pwa.iosHint": "ট্যাপ করুন",
+  "pwa.iosHint2": "তারপর “Add to Home Screen” বেছে নিন।",
   "nav.orders": "অর্ডার",
   "nav.customers": "কাস্টমার",
   "nav.staff": "কর্মী",
