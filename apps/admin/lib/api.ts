@@ -1,6 +1,28 @@
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:4000/api";
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Reads are retried when the connection drops or the server is still starting up;
+// changes (approve, reject) are never retried.
+const RETRY_DELAYS_MS = [700, 2000];
+const RETRY_STATUSES = [502, 503, 504];
+
+async function fetchWithRetry(url: string, init: RequestInit): Promise<Response> {
+  const method = (init.method ?? "GET").toUpperCase();
+  const canRetry = method === "GET" || method === "HEAD";
+  for (let attempt = 0; ; attempt++) {
+    const last = !canRetry || attempt >= RETRY_DELAYS_MS.length;
+    try {
+      const response = await fetch(url, init);
+      if (last || !RETRY_STATUSES.includes(response.status)) return response;
+    } catch (err) {
+      if (last) throw err;
+    }
+    await sleep(RETRY_DELAYS_MS[attempt]);
+  }
+}
+
 export async function apiRequest<T>(
   path: string,
   options: RequestInit = {},
@@ -15,15 +37,13 @@ export async function apiRequest<T>(
 
   let response: Response;
   try {
-    response = await fetch(`${API_BASE}${path}`, {
+    response = await fetchWithRetry(`${API_BASE}${path}`, {
       ...options,
       headers,
       cache: "no-store",
     });
   } catch {
-    throw new Error(
-      "Cannot reach server. Start API on http://localhost:4000 and ensure MongoDB is running.",
-    );
+    throw new Error(`Couldn't connect to the server (${API_BASE}). Check your connection and try again.`);
   }
 
   if (!response.ok) {

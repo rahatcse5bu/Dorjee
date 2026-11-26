@@ -24,6 +24,41 @@ function readErrorMessage(body: string, status: number) {
   return body || `Request failed with ${status}`;
 }
 
+/** Shown when no response arrives at all (offline, or the server failed before answering). */
+function offlineMessage() {
+  let lang = "bn";
+  try {
+    lang = window.localStorage.getItem("dorjee_lang") ?? "bn";
+  } catch {
+    // Storage blocked; use Bangla.
+  }
+  return lang === "en"
+    ? "Couldn't connect to the server. Check your internet connection and try again."
+    : "সার্ভারের সাথে সংযোগ হচ্ছে না। ইন্টারনেট সংযোগ দেখে আবার চেষ্টা করুন।";
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Reads are safe to repeat, so a dropped connection or a server that is still
+// starting up is retried; changes are never retried, to avoid duplicate orders.
+const RETRY_DELAYS_MS = [700, 2000];
+const RETRY_STATUSES = [502, 503, 504];
+
+async function fetchWithRetry(url: string, init: RequestInit): Promise<Response> {
+  const method = (init.method ?? "GET").toUpperCase();
+  const canRetry = method === "GET" || method === "HEAD";
+  for (let attempt = 0; ; attempt++) {
+    const last = !canRetry || attempt >= RETRY_DELAYS_MS.length;
+    try {
+      const response = await fetch(url, init);
+      if (last || !RETRY_STATUSES.includes(response.status)) return response;
+    } catch (err) {
+      if (last) throw err;
+    }
+    await sleep(RETRY_DELAYS_MS[attempt]);
+  }
+}
+
 export async function apiRequest<T>(
   path: string,
   options: RequestInit = {},
@@ -37,15 +72,13 @@ export async function apiRequest<T>(
 
   let response: Response;
   try {
-    response = await fetch(`${API_BASE}${path}`, {
+    response = await fetchWithRetry(`${API_BASE}${path}`, {
       ...options,
       headers,
       cache: "no-store",
     });
   } catch {
-    throw new Error(
-      "Cannot reach server. Start API on http://localhost:4000 and ensure MongoDB is running.",
-    );
+    throw new Error(offlineMessage());
   }
 
   if (!response.ok) {
