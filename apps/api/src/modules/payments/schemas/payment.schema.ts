@@ -21,11 +21,20 @@ export class Payment {
   @Prop({ required: true, default: 1 })
   months!: number;
 
-  @Prop({ required: true, enum: ["bkash_manual", "nagad_manual"] })
-  method!: "bkash_manual" | "nagad_manual";
+  // bkash_online: paid through the bKash checkout page and confirmed by bKash, no review needed.
+  @Prop({ required: true, enum: ["bkash_manual", "nagad_manual", "bkash_online"] })
+  method!: "bkash_manual" | "nagad_manual" | "bkash_online";
 
-  @Prop({ required: true, trim: true })
-  transactionId!: string;
+  // bKash's TrxID. An online payment gets it only once bKash completes it.
+  @Prop({ trim: true })
+  transactionId?: string;
+
+  // bKash checkout: the gateway's paymentID, and the shop app origin to send the user back to.
+  @Prop({ trim: true })
+  bkashPaymentId?: string;
+
+  @Prop({ trim: true })
+  returnOrigin?: string;
 
   // The bKash number the shop sent from. Older payments don't have one.
   @Prop({ trim: true })
@@ -41,8 +50,9 @@ export class Payment {
   @Prop({ trim: true })
   proofImageUrl?: string;
 
+  // initiated/processing/failed are only used by bKash checkout payments.
   @Prop({ required: true, default: "pending" })
-  status!: "pending" | "approved" | "rejected";
+  status!: "pending" | "approved" | "rejected" | "initiated" | "processing" | "failed";
 
   @Prop({ default: null })
   reviewedBy?: string;
@@ -54,3 +64,4 @@ export class Payment {
 export const PaymentSchema = SchemaFactory.createForClass(Payment);
 PaymentSchema.index({ status: 1, createdAt: -1 });
 PaymentSchema.index({ shopId: 1, createdAt: -1 });
+PaymentSchema.index({ bkashPaymentId: 1 }, { unique: true, sparse: true });

@@ -4,6 +4,7 @@ import { SubscriptionsModule } from "../subscriptions/subscriptions.module";
 import { Payment, PaymentSchema } from "./schemas/payment.schema";
 import { PaymentsController } from "./payments.controller";
 import { PaymentsService } from "./payments.service";
+import { BkashService } from "./bkash.service";
 
 @Module({
   imports: [
@@ -11,6 +12,6 @@ import { PaymentsService } from "./payments.service";
     SubscriptionsModule,
   ],
   controllers: [PaymentsController],
-  providers: [PaymentsService],
+  providers: [PaymentsService, BkashService],
 })
 export class PaymentsModule {}

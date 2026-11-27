@@ -122,7 +122,7 @@ export default function AuditLogsPage() {
                   </td>
                   <td className="px-6 py-4">
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
-                      {item.method === "bkash_manual" ? "bKash" : item.method === "nagad_manual" ? "Nagad" : item.method}
+                      {item.method === "bkash_online" ? "bKash (online)" : item.method === "bkash_manual" ? "bKash" : item.method === "nagad_manual" ? "Nagad" : item.method}
                     </span>
                     {item.senderNumber && <span className="mt-1 block font-mono text-xs text-slate-700">{item.senderNumber}</span>}
                   </td>

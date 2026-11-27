@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, Query, Req, Res, UseGuards } from "@nestjs/common";
+import type { Request, Response } from "express";
 import { SkipSubscriptionCheck } from "../common/decorators/skip-subscription.decorator";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { CurrentUser } from "../common/decorators/current-user.decorator";
@@ -6,6 +7,7 @@ import { Roles } from "../common/decorators/roles.decorator";
 import { AuthUser } from "../common/auth-user";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { TenantGuard } from "../common/guards/tenant.guard";
+import { CreateBkashPaymentDto } from "./dto/create-bkash-payment.dto";
 import { CreateManualPaymentDto } from "./dto/create-manual-payment.dto";
 import { ReviewPaymentDto } from "./dto/review-payment.dto";
 import { PaymentsService } from "./payments.service";
@@ -29,6 +31,30 @@ export class PaymentsController {
       transactionId: payload.transactionId,
       planCode: payload.planCode,
     });
+  }
+
+  /** Starts a bKash checkout; the shop app redirects the user to the returned bkashURL. */
+  @Post("shops/:shopId/payments/bkash")
+  @UseGuards(JwtAuthGuard, TenantGuard, PermissionsGuard)
+  @SkipSubscriptionCheck()
+  @RequirePermission(["subscription", "manage"])
+  createBkash(@Param("shopId") shopId: string, @Body() payload: CreateBkashPaymentDto, @Req() req: Request) {
+    return this.paymentsService.createBkash({
+      shopId,
+      planCode: payload.planCode,
+      returnOrigin: payload.returnOrigin ?? req.get("origin"),
+      callbackURL: bkashCallbackUrl(req),
+    });
+  }
+
+  /** bKash redirects the user's browser here after checkout (no login: the paymentID is verified with bKash). */
+  @Get("payments/bkash/callback")
+  async bkashCallback(
+    @Query("paymentID") paymentID: string | undefined,
+    @Query("status") status: string | undefined,
+    @Res() res: Response,
+  ) {
+    res.redirect(302, await this.paymentsService.completeBkash(paymentID, status));
   }
 
   @Get("admin/payments/pending")
@@ -74,4 +100,11 @@ export class PaymentsController {
   ) {
     return this.paymentsService.reject(paymentId, user.sub, payload.notes ?? payload.reason);
   }
+}
+
+/** This API's own callback address (BKASH_CALLBACK_URL overrides it, e.g. behind a custom domain). */
+function bkashCallbackUrl(req: Request) {
+  if (process.env.BKASH_CALLBACK_URL) return process.env.BKASH_CALLBACK_URL;
+  const proto = (req.get("x-forwarded-proto") ?? req.protocol).split(",")[0].trim();
+  return `${proto}://${req.get("x-forwarded-host") ?? req.get("host")}/api/payments/bkash/callback`;
 }

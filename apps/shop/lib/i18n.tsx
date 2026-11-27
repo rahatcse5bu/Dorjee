@@ -593,6 +593,15 @@ const en = {
   "sub.st.expired": "Expired",
   "sub.st.inactive": "Inactive",
   "sub.st.cancelled": "Cancelled",
+  "sub.payOnline": "Pay with bKash",
+  "sub.payOnlineBody": "Pay straight from your bKash account. Your plan starts as soon as bKash confirms it, with no cash-out charge.",
+  "sub.payNow": "Pay {amount} with bKash",
+  "sub.redirecting": "Opening bKash…",
+  "sub.orManual": "Or pay by bKash Send Money and submit the TrxID",
+  "sub.bkashSuccess": "Payment successful. Your plan is now active.",
+  "sub.bkashCancel": "The bKash payment was cancelled.",
+  "sub.bkashFailure": "The bKash payment did not complete. Please try again.",
+  "method.bkashOnline": "bKash (online)",
 };
 
 export type TranslationKey = keyof typeof en;
@@ -1162,6 +1171,15 @@ const bn: Record<TranslationKey, string> = {
   "sub.st.expired": "মেয়াদ শেষ",
   "sub.st.inactive": "নিষ্ক্রিয়",
   "sub.st.cancelled": "বাতিল",
+  "sub.payOnline": "বিকাশে পেমেন্ট করুন",
+  "sub.payOnlineBody": "সরাসরি আপনার বিকাশ অ্যাকাউন্ট থেকে পেমেন্ট করুন। বিকাশ নিশ্চিত করলেই প্ল্যান চালু হবে, কোনো ক্যাশআউট চার্জ লাগবে না।",
+  "sub.payNow": "বিকাশে {amount} পেমেন্ট করুন",
+  "sub.redirecting": "বিকাশ খোলা হচ্ছে…",
+  "sub.orManual": "অথবা বিকাশে Send Money করে TrxID জমা দিন",
+  "sub.bkashSuccess": "পেমেন্ট সফল হয়েছে। আপনার প্ল্যান চালু হয়েছে।",
+  "sub.bkashCancel": "বিকাশ পেমেন্ট বাতিল করা হয়েছে।",
+  "sub.bkashFailure": "বিকাশ পেমেন্ট সম্পন্ন হয়নি। আবার চেষ্টা করুন।",
+  "method.bkashOnline": "বিকাশ (অনলাইন)",
 };
 
 const dictionaries: Record<Lang, Record<TranslationKey, string>> = { en, bn };

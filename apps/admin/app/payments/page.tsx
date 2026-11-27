@@ -129,7 +129,7 @@ export default function PaymentsPage() {
                   </td>
                   <td className="px-6 py-4">
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-pink-700">
-                      {payment.method === "bkash_manual" ? "bKash" : payment.method === "nagad_manual" ? "Nagad" : payment.method}
+                      {payment.method === "bkash_online" ? "bKash (online)" : payment.method === "bkash_manual" ? "bKash" : payment.method === "nagad_manual" ? "Nagad" : payment.method}
                     </span>
                     {payment.senderNumber && (
                       <span className="mt-1 block font-mono text-xs text-slate-700">{payment.senderNumber}</span>

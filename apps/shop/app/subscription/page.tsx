@@ -21,6 +21,8 @@ interface PaymentInfo {
   bkashNumber: string;
   accountType: string;
   cashoutPerThousand: number;
+  // Whether bKash checkout (pay online, activates instantly) is set up on the API.
+  bkashOnline?: boolean;
 }
 
 interface Subscription {
@@ -34,12 +36,12 @@ interface Subscription {
 
 interface Payment {
   _id: string;
-  method: "bkash_manual" | "nagad_manual";
+  method: "bkash_manual" | "nagad_manual" | "bkash_online";
   amountBdt: number;
   payableBdt?: number;
   senderNumber?: string;
   months?: number;
-  transactionId: string;
+  transactionId?: string;
   status: "pending" | "approved" | "rejected";
   createdAt: string;
 }
@@ -85,6 +87,7 @@ export default function SubscriptionPage() {
   const [transactionId, setTransactionId] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
 
   async function loadData() {
     const [subscriptionResult, paymentResult, planResult, infoResult] = await Promise.all([
@@ -105,8 +108,36 @@ export default function SubscriptionPage() {
 
   useEffect(() => {
     void loadData().catch((err) => setError(errorMessage(err, t("common.somethingWrong"))));
+    // Back from bKash checkout: the API has already verified the payment and redirects with the outcome.
+    const params = new URLSearchParams(window.location.search);
+    const outcome = params.get("bkash");
+    if (outcome) {
+      if (outcome === "success") toast(t("sub.bkashSuccess"));
+      else setError(outcome === "cancel" ? t("sub.bkashCancel") : t("sub.bkashFailure"));
+      params.delete("bkash");
+      params.delete("trx");
+      params.delete("retry");
+      const rest = params.toString();
+      window.history.replaceState(null, "", window.location.pathname + (rest ? `?${rest}` : ""));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function payWithBkash() {
+    setError("");
+    setRedirecting(true);
+    try {
+      const { bkashURL } = await apiRequest<{ bkashURL: string }>(
+        `/shops/${shopId}/payments/bkash`,
+        { method: "POST", body: JSON.stringify({ planCode, returnOrigin: window.location.origin }) },
+        token,
+      );
+      window.location.href = bkashURL;
+    } catch (err) {
+      setError(errorMessage(err, t("common.somethingWrong")));
+      setRedirecting(false);
+    }
+  }
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -151,112 +182,9 @@ export default function SubscriptionPage() {
   const hasTimeLeft =
     status === "active" && !!subscription?.nextBillingDate && new Date(subscription.nextBillingDate).getTime() > Date.now();
 
-  return (
-    <section className="space-y-5">
-      <PageHeader title={t("sub.title")} subtitle={t("sub.sub")} />
-
-      {/* Plan card */}
-      <div className="overflow-hidden rounded-2xl border border-ink/10">
-        <div className="flex items-center justify-between bg-gradient-to-r from-teal to-[#0f4250] px-6 py-6">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-white/60">{t("sub.currentPlan")}</p>
-            <p className="mt-2 text-3xl font-bold text-white">
-              {money(amount)}{" "}
-              <span className="text-base font-medium text-white/70">
-                {currentMonths === 1 ? t("sub.perMonth") : `/ ${period(currentMonths)}`}
-              </span>
-            </p>
-          </div>
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/15 text-white">
-            <Zap className="h-7 w-7" />
-          </div>
-        </div>
-        <div className="grid divide-y divide-ink/10 bg-white/70 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-          <div className="px-6 py-4">
-            <p className="mb-1.5 text-xs font-semibold text-ink/50">{t("sub.status")}</p>
-            <p className="flex items-center gap-2">
-              <span className={`h-2 w-2 rounded-full ${statusStyle.dot}`} />
-              <span className={`text-sm font-semibold ${statusStyle.text}`}>{t(`sub.st.${status}` as TranslationKey)}</span>
-            </p>
-          </div>
-          {subscription?.trialEndsAt && (
-            <div className="px-6 py-4">
-              <p className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-ink/50">
-                <Clock className="h-3 w-3" /> {status === "expired" ? t("sub.trialEnded") : t("sub.trialEnds")}
-              </p>
-              <p className={`text-sm font-semibold ${status === "expired" ? "text-red-700" : "text-ink"}`}>{date(subscription.trialEndsAt)}</p>
-            </div>
-          )}
-          {subscription?.nextBillingDate && (
-            <div className="px-6 py-4">
-              <p className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-ink/50">
-                <CalendarDays className="h-3 w-3" /> {t("sub.nextBilling")}
-              </p>
-              <p className={`text-sm font-semibold ${status === "past_due" ? "text-red-700" : "text-ink"}`}>{date(subscription.nextBillingDate)}</p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Submit payment */}
-      {canPay && (
-      <form onSubmit={onSubmit} className={`${cardClass} space-y-4 p-5 sm:p-6`}>
-        <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-brass/10 text-brass">
-            <CreditCard className="h-4 w-4" />
-          </div>
-          <div>
-            <p className="font-semibold text-ink">{t("sub.submitPayment")}</p>
-            <p className="text-xs text-ink/55">{t("sub.howTo")}</p>
-          </div>
-        </div>
-        <fieldset>
-          <legend className="mb-2 text-xs font-semibold text-ink/60">{t("sub.choosePlan")}</legend>
-          <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4" role="radiogroup">
-            {plans.map((plan) => {
-              const on = plan.code === selected.code;
-              const saving = monthlyPrice * plan.months - plan.priceBdt;
-              return (
-                <button
-                  key={plan.code}
-                  type="button"
-                  role="radio"
-                  aria-checked={on}
-                  onClick={() => setPlanCode(plan.code)}
-                  className={`relative flex flex-col items-stretch justify-start rounded-xl border-2 p-3.5 text-left transition ${
-                    on ? "border-teal bg-teal/[0.06]" : "border-ink/10 bg-white hover:border-teal/40"
-                  }`}
-                >
-                  {plan.code === bestValue.code && plan.months > 1 && (
-                    <span className="absolute -top-2.5 right-2 rounded-full bg-brass px-2 py-0.5 text-[10px] font-bold text-white">
-                      {t("sub.bestValue")}
-                    </span>
-                  )}
-                  <span className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-semibold text-ink">{period(plan.months)}</span>
-                    <span
-                      className={`flex h-5 w-5 items-center justify-center rounded-full border-2 ${
-                        on ? "border-teal bg-teal text-white" : "border-ink/20"
-                      }`}
-                    >
-                      {on && <Check className="h-3 w-3" />}
-                    </span>
-                  </span>
-                  <span className="mt-1.5 block text-xl font-bold text-ink">{money(plan.priceBdt)}</span>
-                  <span className="block text-xs text-ink/55">
-                    {t("sub.monthlyEq", { amount: money(Math.round(plan.priceBdt / plan.months)) })}
-                  </span>
-                  {saving > 0 && (
-                    <span className="mt-2 self-start rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
-                      {t("sub.save", { amount: money(saving) })}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-          {hasTimeLeft && <p className="mt-2 text-xs text-ink/55">{t("sub.extendNote")}</p>}
-        </fieldset>
+  // bKash Send Money to a personal number, then the TrxID is reviewed by an admin.
+  const manualForm = (
+    <>
         {/* Where to send the money */}
         <div className="overflow-hidden rounded-2xl border border-[#e2136e]/25 bg-[#e2136e]/[0.04]">
           <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-5">
@@ -323,13 +251,152 @@ export default function SubscriptionPage() {
             />
           </Field>
         </div>
-        {error && <Alert>{error}</Alert>}
         <div className="flex justify-end">
           <button type="submit" className={btnPrimary} disabled={submitting}>
             <CreditCard className="h-4 w-4" />
             {t("sub.submit")}
           </button>
         </div>
+    </>
+  );
+
+  return (
+    <section className="space-y-5">
+      <PageHeader title={t("sub.title")} subtitle={t("sub.sub")} />
+
+      {/* Plan card */}
+      <div className="overflow-hidden rounded-2xl border border-ink/10">
+        <div className="flex items-center justify-between bg-gradient-to-r from-teal to-[#0f4250] px-6 py-6">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-white/60">{t("sub.currentPlan")}</p>
+            <p className="mt-2 text-3xl font-bold text-white">
+              {money(amount)}{" "}
+              <span className="text-base font-medium text-white/70">
+                {currentMonths === 1 ? t("sub.perMonth") : `/ ${period(currentMonths)}`}
+              </span>
+            </p>
+          </div>
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/15 text-white">
+            <Zap className="h-7 w-7" />
+          </div>
+        </div>
+        <div className="grid divide-y divide-ink/10 bg-white/70 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+          <div className="px-6 py-4">
+            <p className="mb-1.5 text-xs font-semibold text-ink/50">{t("sub.status")}</p>
+            <p className="flex items-center gap-2">
+              <span className={`h-2 w-2 rounded-full ${statusStyle.dot}`} />
+              <span className={`text-sm font-semibold ${statusStyle.text}`}>{t(`sub.st.${status}` as TranslationKey)}</span>
+            </p>
+          </div>
+          {subscription?.trialEndsAt && (
+            <div className="px-6 py-4">
+              <p className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-ink/50">
+                <Clock className="h-3 w-3" /> {status === "expired" ? t("sub.trialEnded") : t("sub.trialEnds")}
+              </p>
+              <p className={`text-sm font-semibold ${status === "expired" ? "text-red-700" : "text-ink"}`}>{date(subscription.trialEndsAt)}</p>
+            </div>
+          )}
+          {subscription?.nextBillingDate && (
+            <div className="px-6 py-4">
+              <p className="mb-1.5 flex items-center gap-1 text-xs font-semibold text-ink/50">
+                <CalendarDays className="h-3 w-3" /> {t("sub.nextBilling")}
+              </p>
+              <p className={`text-sm font-semibold ${status === "past_due" ? "text-red-700" : "text-ink"}`}>{date(subscription.nextBillingDate)}</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Submit payment */}
+      {canPay && (
+      <form onSubmit={onSubmit} className={`${cardClass} space-y-4 p-5 sm:p-6`}>
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-brass/10 text-brass">
+            <CreditCard className="h-4 w-4" />
+          </div>
+          <div>
+            <p className="font-semibold text-ink">{t("sub.submitPayment")}</p>
+            {!info.bkashOnline && <p className="text-xs text-ink/55">{t("sub.howTo")}</p>}
+          </div>
+        </div>
+        <fieldset>
+          <legend className="mb-2 text-xs font-semibold text-ink/60">{t("sub.choosePlan")}</legend>
+          <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4" role="radiogroup">
+            {plans.map((plan) => {
+              const on = plan.code === selected.code;
+              const saving = monthlyPrice * plan.months - plan.priceBdt;
+              return (
+                <button
+                  key={plan.code}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  onClick={() => setPlanCode(plan.code)}
+                  className={`relative flex flex-col items-stretch justify-start rounded-xl border-2 p-3.5 text-left transition ${
+                    on ? "border-teal bg-teal/[0.06]" : "border-ink/10 bg-white hover:border-teal/40"
+                  }`}
+                >
+                  {plan.code === bestValue.code && plan.months > 1 && (
+                    <span className="absolute -top-2.5 right-2 rounded-full bg-brass px-2 py-0.5 text-[10px] font-bold text-white">
+                      {t("sub.bestValue")}
+                    </span>
+                  )}
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-semibold text-ink">{period(plan.months)}</span>
+                    <span
+                      className={`flex h-5 w-5 items-center justify-center rounded-full border-2 ${
+                        on ? "border-teal bg-teal text-white" : "border-ink/20"
+                      }`}
+                    >
+                      {on && <Check className="h-3 w-3" />}
+                    </span>
+                  </span>
+                  <span className="mt-1.5 block text-xl font-bold text-ink">{money(plan.priceBdt)}</span>
+                  <span className="block text-xs text-ink/55">
+                    {t("sub.monthlyEq", { amount: money(Math.round(plan.priceBdt / plan.months)) })}
+                  </span>
+                  {saving > 0 && (
+                    <span className="mt-2 self-start rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                      {t("sub.save", { amount: money(saving) })}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          {hasTimeLeft && <p className="mt-2 text-xs text-ink/55">{t("sub.extendNote")}</p>}
+        </fieldset>
+        {info.bkashOnline && (
+          <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#e2136e]/25 bg-[#e2136e]/[0.04] p-4 sm:p-5">
+            <div className="min-w-0 flex-1 basis-64">
+              <p className="flex items-center gap-1.5 font-semibold text-ink">
+                <Zap className="h-4 w-4 text-[#e2136e]" />
+                {t("sub.payOnline")}
+              </p>
+              <p className="mt-0.5 text-xs text-ink/60">{t("sub.payOnlineBody")}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void payWithBkash()}
+              disabled={redirecting}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#e2136e] px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-[#c0105d] disabled:opacity-60 sm:w-auto"
+            >
+              <Smartphone className="h-4 w-4" />
+              {redirecting ? t("sub.redirecting") : t("sub.payNow", { amount: money(selected.priceBdt) })}
+            </button>
+          </div>
+        )}
+        {info.bkashOnline ? (
+          <details className="group rounded-2xl border border-ink/10 bg-white/60">
+            <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-ink/70 hover:text-ink">
+              {t("sub.orManual")}
+            </summary>
+            <div className="space-y-4 border-t border-ink/10 p-4">{manualForm}</div>
+          </details>
+        ) : (
+          manualForm
+        )}
+        {error && <Alert>{error}</Alert>}
       </form>
       )}
 
@@ -362,11 +429,11 @@ export default function SubscriptionPage() {
                       <td className="px-5 py-3 text-ink/65">{date(payment.createdAt)}</td>
                       <td className="whitespace-nowrap px-5 py-3 text-ink/80">{period(payment.months ?? 1)}</td>
                       <td className="whitespace-nowrap px-5 py-3 font-medium text-ink">
-                        {payment.method === "bkash_manual" ? t("method.bkash") : t("method.nagad")}
+                        {payment.method === "bkash_online" ? t("method.bkashOnline") : payment.method === "bkash_manual" ? t("method.bkash") : t("method.nagad")}
                         {payment.senderNumber && <span className="block font-mono text-xs font-normal text-ink/50">{payment.senderNumber}</span>}
                       </td>
                       <td className="px-5 py-3 font-semibold text-ink">{money(payment.payableBdt ?? payment.amountBdt)}</td>
-                      <td className="px-5 py-3 font-mono text-xs text-ink/55">{payment.transactionId}</td>
+                      <td className="px-5 py-3 font-mono text-xs text-ink/55">{payment.transactionId ?? "—"}</td>
                       <td className="px-5 py-3">
                         <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${style.badge}`}>
                           <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />

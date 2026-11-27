@@ -13,6 +13,9 @@ export class PlansController {
   /** Where and how to pay. */
   @Get("payment-info")
   paymentInfo() {
-    return PAYMENT_INFO;
+    const bkashOnline = Boolean(
+      process.env.BKASH_USER_NAME && process.env.BKASH_PASSWORD && process.env.BKASH_APP_KEY && process.env.BKASH_APP_SECRET,
+    );
+    return { ...PAYMENT_INFO, bkashOnline };
   }
 }
