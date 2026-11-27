@@ -1,7 +1,8 @@
 import { BadRequestException, Injectable, Logger, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model } from "mongoose";
-import { findPlan, payableFor } from "../subscriptions/plans";
+import { normalizePlanCode, payableFor, Plan } from "../subscriptions/plans";
+import { PlatformSettingsService } from "../subscriptions/platform-settings.service";
 import { SubscriptionsService } from "../subscriptions/subscriptions.service";
 import { BkashResponse, BkashService } from "./bkash.service";
 import { Payment, PaymentDocument } from "./schemas/payment.schema";
@@ -38,15 +39,22 @@ export class PaymentsService {
     @InjectModel(Payment.name) private readonly paymentModel: Model<PaymentDocument>,
     private readonly subscriptionsService: SubscriptionsService,
     private readonly bkash: BkashService,
+    private readonly settings: PlatformSettingsService,
   ) {}
+
+  /** The plan a stored payment bought, at the price that was actually charged. */
+  private paidPlan(payment: { planCode: string; months: number; amountBdt: number }): Plan {
+    return { code: normalizePlanCode(payment.planCode), months: payment.months, priceBdt: payment.amountBdt };
+  }
 
   /**
    * Starts a bKash checkout for a plan and returns the bKash page to send the user to.
    * The amount is the plan price (no cash-out charge: the money goes to a merchant account).
    */
   async createBkash(payload: { shopId: string; planCode?: string; returnOrigin?: string; callbackURL: string }) {
-    if (!this.bkash.enabled) throw new ServiceUnavailableException("bKash payment is not configured");
-    const plan = findPlan(payload.planCode);
+    const { bkashOnline } = await this.settings.get();
+    if (!bkashOnline || !this.bkash.enabled) throw new ServiceUnavailableException("bKash online payment is turned off");
+    const plan = await this.settings.planForPurchase(payload.planCode);
     const payment = await this.paymentModel.create({
       shopId: payload.shopId,
       subscriptionId: payload.shopId,
@@ -164,7 +172,7 @@ export class PaymentsService {
         reviewNote: "Paid via bKash checkout",
       },
     );
-    await this.subscriptionsService.activate(payment.shopId, findPlan(payment.planCode));
+    await this.subscriptionsService.activate(payment.shopId, this.paidPlan(payment));
     return back("success", { trx: result.trxID ?? "" });
   }
 
@@ -182,15 +190,17 @@ export class PaymentsService {
     if (used) {
       throw new BadRequestException("This transaction ID has already been submitted");
     }
+    const settings = await this.settings.get();
+    if (!settings.manualPaymentEnabled) throw new BadRequestException("Manual bKash payment is turned off. Please pay online.");
     // The price always comes from the plan, never from the client.
-    const plan = findPlan(payload.planCode);
+    const plan = await this.settings.planForPurchase(payload.planCode);
     return this.paymentModel.create({
       ...payload,
       method: "bkash_manual",
       planCode: plan.code,
       months: plan.months,
       amountBdt: plan.priceBdt,
-      ...payableFor(plan.priceBdt),
+      ...payableFor(plan.priceBdt, settings.cashoutPerThousand),
       subscriptionId: payload.shopId,
       status: "pending",
     });
@@ -229,7 +239,7 @@ export class PaymentsService {
     payment.reviewNote = note;
     await payment.save();
 
-    await this.subscriptionsService.activate(payment.shopId, findPlan(payment.planCode));
+    await this.subscriptionsService.activate(payment.shopId, this.paidPlan(payment));
 
     return payment.toObject();
   }

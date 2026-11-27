@@ -36,6 +36,18 @@ const statusConfig: Record<string, { label: string; badge: string; card: string;
     card: "border-red-200 bg-red-50",
     dot: "bg-red-500",
   },
+  past_due: {
+    label: "Past Due",
+    badge: "bg-red-100 text-red-600",
+    card: "border-red-200 bg-red-50",
+    dot: "bg-red-500",
+  },
+  inactive: {
+    label: "No Subscription",
+    badge: "bg-slate-100 text-slate-500",
+    card: "border-slate-200 bg-slate-50",
+    dot: "bg-slate-400",
+  },
   pending: {
     label: "Pending",
     badge: "bg-slate-100 text-slate-600",
@@ -80,7 +92,7 @@ export default function SubscriptionsPage() {
     return acc;
   }, {});
 
-  const statusOrder = ["active", "trial", "grace", "expired", "pending"];
+  const statusOrder = ["active", "trial", "grace", "past_due", "expired", "pending", "inactive"];
   const sortedStatuses = [
     ...statusOrder.filter((s) => byStatus[s]),
     ...Object.keys(byStatus).filter((s) => !statusOrder.includes(s)),

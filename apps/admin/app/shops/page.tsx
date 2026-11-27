@@ -19,6 +19,8 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   grace: { label: "Grace Period", className: "bg-amber-100 text-amber-700" },
   expired: { label: "Expired", className: "bg-red-100 text-red-600" },
   pending: { label: "Pending", className: "bg-slate-100 text-slate-600" },
+  past_due: { label: "Past Due", className: "bg-red-100 text-red-600" },
+  inactive: { label: "No Subscription", className: "bg-slate-100 text-slate-500" },
 };
 
 function StatusBadge({ status }: { status: string }) {

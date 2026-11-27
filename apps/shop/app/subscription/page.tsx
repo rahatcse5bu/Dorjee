@@ -23,6 +23,8 @@ interface PaymentInfo {
   cashoutPerThousand: number;
   // Whether bKash checkout (pay online, activates instantly) is set up on the API.
   bkashOnline?: boolean;
+  // False when the admin turned manual Send Money off.
+  manualPayment?: boolean;
 }
 
 interface Subscription {
@@ -386,7 +388,7 @@ export default function SubscriptionPage() {
             </button>
           </div>
         )}
-        {info.bkashOnline ? (
+        {info.manualPayment === false ? null : info.bkashOnline ? (
           <details className="group rounded-2xl border border-ink/10 bg-white/60">
             <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-ink/70 hover:text-ink">
               {t("sub.orManual")}

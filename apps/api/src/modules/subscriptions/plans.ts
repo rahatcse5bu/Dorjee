@@ -1,39 +1,47 @@
-/** The plans a shop can pay for. Longer plans cost less per month. */
-export const SUBSCRIPTION_PLANS = [
+/** The plans a shop can pay for. Codes and lengths are fixed; prices and availability come from platform settings. */
+export const DEFAULT_PLANS = [
   { code: "MONTHLY", months: 1, priceBdt: 500 },
   { code: "QUARTERLY", months: 3, priceBdt: 1450 },
   { code: "HALF_YEARLY", months: 6, priceBdt: 2800 },
   { code: "YEARLY", months: 12, priceBdt: 5100 },
 ] as const;
 
-/**
- * Where shops send money: bKash "Send Money" to a personal account. Cashing that
- * out costs 18.75 tk per 1,000, so the shop adds it on top of the plan price.
- */
-export const PAYMENT_INFO = {
-  method: "bkash_manual",
-  bkashNumber: process.env.BKASH_NUMBER ?? "01793278360",
-  accountType: "personal",
-  cashoutPerThousand: 18.75,
-} as const;
+export type PlanCode = (typeof DEFAULT_PLANS)[number]["code"];
+export const PLAN_CODES = DEFAULT_PLANS.map((p) => p.code) as PlanCode[];
 
-/** The plan price plus the cash-out charge, rounded up to whole taka. */
-export function payableFor(priceBdt: number) {
-  const payableBdt = Math.ceil(priceBdt + (priceBdt * PAYMENT_INFO.cashoutPerThousand) / 1000);
-  return { chargeBdt: payableBdt - priceBdt, payableBdt };
+export interface Plan {
+  code: string;
+  months: number;
+  priceBdt: number;
 }
 
-export type PlanCode = (typeof SUBSCRIPTION_PLANS)[number]["code"];
-export type Plan = (typeof SUBSCRIPTION_PLANS)[number];
+/** Defaults used until an admin saves settings. */
+export const DEFAULT_PAYMENT_SETTINGS = {
+  bkashNumber: process.env.BKASH_NUMBER ?? "01793278360",
+  cashoutPerThousand: 18.75,
+  trialDays: 7,
+  graceDays: 0,
+};
 
-export const PLAN_CODES = SUBSCRIPTION_PLANS.map((p) => p.code);
+/** Plan price plus the bKash cash-out charge for Send Money, rounded up to whole taka. */
+export function payableFor(priceBdt: number, cashoutPerThousand: number) {
+  const payableBdt = Math.ceil(priceBdt + (priceBdt * cashoutPerThousand) / 1000);
+  return { chargeBdt: payableBdt - priceBdt, payableBdt };
+}
 
 // Subscriptions and payments created before plans existed were monthly.
 const LEGACY_CODES: Record<string, PlanCode> = { MONTHLY_500_BDT: "MONTHLY" };
 
-export function findPlan(code: string | undefined | null): Plan {
+export function normalizePlanCode(code: string | undefined | null): PlanCode {
   const resolved = (code && LEGACY_CODES[code]) ?? code;
-  return SUBSCRIPTION_PLANS.find((p) => p.code === resolved) ?? SUBSCRIPTION_PLANS[0];
+  return PLAN_CODES.includes(resolved as PlanCode) ? (resolved as PlanCode) : "MONTHLY";
+}
+
+/** Whether bKash checkout credentials are set on the server. */
+export function bkashCredentialsPresent() {
+  return Boolean(
+    process.env.BKASH_USER_NAME && process.env.BKASH_PASSWORD && process.env.BKASH_APP_KEY && process.env.BKASH_APP_SECRET,
+  );
 }
 
 /** `date` plus whole months, clamped to the month's last day (31 Jan + 1 → 28/29 Feb). */
@@ -44,5 +52,11 @@ export function addMonths(date: Date, months: number) {
   result.setMonth(result.getMonth() + months);
   const lastDay = new Date(result.getFullYear(), result.getMonth() + 1, 0).getDate();
   result.setDate(Math.min(day, lastDay));
+  return result;
+}
+
+export function addDays(date: Date, days: number) {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
   return result;
 }

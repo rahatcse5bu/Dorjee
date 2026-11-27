@@ -70,7 +70,7 @@ export default function DashboardPage() {
       ]);
 
       const activeLike = shops.filter((s) =>
-        ["active", "trial"].includes(s.subscriptionStatus ?? "")
+        ["active", "trial", "grace"].includes(s.subscriptionStatus ?? "")
       ).length;
       const projectedMrr = activeLike * 500;
 

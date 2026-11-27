@@ -10,6 +10,7 @@ import { apiRequest } from "../../lib/api";
 import { AuthUser, setShopAuth } from "../../lib/auth";
 import { useI18n } from "../../lib/i18n";
 import { errorMessage } from "../../lib/session";
+import { useTrialDays } from "../../lib/trial";
 
 interface RegisterResponse {
   accessToken: string;
@@ -18,7 +19,8 @@ interface RegisterResponse {
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { t } = useI18n();
+  const { t, num } = useI18n();
+  const trialDays = useTrialDays();
   const [form, setForm] = useState({ shopName: "", ownerName: "", phone: "", email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
@@ -48,7 +50,7 @@ export default function RegisterPage() {
   return (
     <AuthLayout
       title={t("auth.registerTitle")}
-      subtitle={t("auth.registerSub")}
+      subtitle={t("auth.registerSub", { days: num(trialDays) })}
       footer={
         <>
           {t("auth.haveAccount")}{" "}

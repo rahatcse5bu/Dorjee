@@ -18,6 +18,7 @@ import { btnPrimary, btnSecondary } from "../components/ui";
 import { API_BASE } from "../lib/api";
 import { getShopToken } from "../lib/auth";
 import { TranslationKey, useI18n } from "../lib/i18n";
+import { useTrialDays } from "../lib/trial";
 
 const FEATURES: Array<{ icon: typeof Ruler; title: TranslationKey; body: TranslationKey }> = [
   { icon: Ruler, title: "home.f1.title", body: "home.f1.body" },
@@ -133,6 +134,7 @@ function ProductPreview() {
 
 export default function HomePage() {
   const { t, lang, setLang, money, num } = useI18n();
+  const trialDays = useTrialDays();
   const [signedIn, setSignedIn] = useState(false);
 
   useEffect(() => setSignedIn(!!getShopToken()), []);
@@ -222,7 +224,7 @@ export default function HomePage() {
                 </Link>
               )}
             </div>
-            {!signedIn && <p className="mt-4 text-sm text-ink/50">{t("home.trialNote")}</p>}
+            {!signedIn && <p className="mt-4 text-sm text-ink/50">{t("home.trialNote", { days: num(trialDays) })}</p>}
           </div>
           <ProductPreview />
         </section>
@@ -312,7 +314,7 @@ export default function HomePage() {
               ))}
             </ul>
             <div className="mt-8 flex justify-center">{primaryCta}</div>
-            {!signedIn && <p className="mt-3 text-xs text-ink/50">{t("home.trialNote")}</p>}
+            {!signedIn && <p className="mt-3 text-xs text-ink/50">{t("home.trialNote", { days: num(trialDays) })}</p>}
           </div>
         </section>
 
