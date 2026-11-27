@@ -9,6 +9,7 @@ import { RolesGuard } from "../common/guards/roles.guard";
 import { TenantGuard } from "../common/guards/tenant.guard";
 import { CreateBkashPaymentDto } from "./dto/create-bkash-payment.dto";
 import { CreateManualPaymentDto } from "./dto/create-manual-payment.dto";
+import { RefundPaymentDto } from "./dto/refund-payment.dto";
 import { ReviewPaymentDto } from "./dto/review-payment.dto";
 import { PaymentsService } from "./payments.service";
 import { PermissionsGuard, RequirePermission } from "../permissions/permissions.guard";
@@ -88,6 +89,14 @@ export class PaymentsController {
     @Body() payload: ReviewPaymentDto,
   ) {
     return this.paymentsService.approve(paymentId, user.sub, payload.notes ?? payload.reason);
+  }
+
+  /** Refunds an approved payment (bKash checkout: through bKash; manual: records the refund). */
+  @Post("admin/payments/:paymentId/refund")
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles("super_admin", "admin_finance")
+  refund(@Param("paymentId") paymentId: string, @CurrentUser() user: AuthUser, @Body() payload: RefundPaymentDto) {
+    return this.paymentsService.refund(paymentId, user.sub, payload);
   }
 
   @Patch("admin/payments/:paymentId/reject")

@@ -3,6 +3,29 @@ import { HydratedDocument } from "mongoose";
 
 export type PaymentDocument = HydratedDocument<Payment>;
 
+@Schema({ _id: false })
+export class PaymentRefund {
+  @Prop({ required: true })
+  amountBdt!: number;
+
+  // bKash's refund TrxID (online refunds), or the Send Money TrxID an admin entered (manual).
+  @Prop({ trim: true })
+  refundTrxId?: string;
+
+  @Prop({ trim: true })
+  reason?: string;
+
+  @Prop({ required: true })
+  by!: string;
+
+  @Prop({ type: Date, default: () => new Date() })
+  at!: Date;
+
+  @Prop({ required: true, enum: ["bkash_api", "manual"] })
+  via!: "bkash_api" | "manual";
+}
+const PaymentRefundSchema = SchemaFactory.createForClass(PaymentRefund);
+
 @Schema({ timestamps: true })
 export class Payment {
   @Prop({ required: true })
@@ -51,8 +74,19 @@ export class Payment {
   proofImageUrl?: string;
 
   // initiated/processing/failed are only used by bKash checkout payments.
+  // refunded: the whole amount was given back and the plan's months were removed.
   @Prop({ required: true, default: "pending" })
-  status!: "pending" | "approved" | "rejected" | "initiated" | "processing" | "failed";
+  status!: "pending" | "approved" | "rejected" | "initiated" | "processing" | "failed" | "refunded";
+
+  @Prop({ default: 0 })
+  refundedBdt?: number;
+
+  @Prop({ type: [PaymentRefundSchema], default: [] })
+  refunds?: PaymentRefund[];
+
+  // Set while a refund is in flight, so two admins can't refund the same payment at once.
+  @Prop({ default: false })
+  refundLock?: boolean;
 
   @Prop({ default: null })
   reviewedBy?: string;

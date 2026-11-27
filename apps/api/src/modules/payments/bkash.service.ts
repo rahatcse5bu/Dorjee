@@ -12,6 +12,11 @@ export interface BkashResponse {
   merchantInvoiceNumber?: string;
   customerMsisdn?: string;
   paymentExecuteTime?: string;
+  // Refund responses.
+  refundTrxID?: string;
+  originalTrxID?: string;
+  completedTime?: string;
+  charge?: string;
   // Gateway-level failures (bad token, outage) use these instead.
   errorCode?: string;
   errorMessage?: string;
@@ -100,5 +105,21 @@ export class BkashService {
 
   queryPayment(paymentID: string) {
     return this.authed("/checkout/payment/status", { paymentID });
+  }
+
+  /** Refunds part or all of a completed payment back to the payer's bKash account. */
+  refund(input: { paymentID: string; trxID: string; amount: number; reason: string; sku: string }) {
+    return this.authed("/checkout/payment/refund", {
+      paymentID: input.paymentID,
+      trxID: input.trxID,
+      amount: input.amount.toFixed(2),
+      reason: input.reason.slice(0, 255),
+      sku: input.sku.slice(0, 255),
+    });
+  }
+
+  /** Refund status for a payment: the same endpoint without an amount. */
+  refundStatus(paymentID: string, trxID: string) {
+    return this.authed("/checkout/payment/refund", { paymentID, trxID });
   }
 }

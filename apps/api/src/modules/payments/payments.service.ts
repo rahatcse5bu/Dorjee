@@ -212,14 +212,14 @@ export class PaymentsService {
 
   listByShop(shopId: string) {
     return this.paymentModel
-      .find({ shopId, status: { $in: ["pending", "approved", "rejected"] } })
+      .find({ shopId, status: { $in: ["pending", "approved", "rejected", "refunded"] } })
       .sort({ createdAt: -1 })
       .lean();
   }
 
   listReviewed() {
     return this.paymentModel
-      .find({ status: { $in: ["approved", "rejected"] } })
+      .find({ status: { $in: ["approved", "rejected", "refunded"] } })
       .sort({ updatedAt: -1 })
       .lean();
   }
@@ -242,6 +242,94 @@ export class PaymentsService {
     await this.subscriptionsService.activate(payment.shopId, this.paidPlan(payment));
 
     return payment.toObject();
+  }
+
+  /**
+   * Refunds an approved payment. bKash checkout payments go back through the
+   * bKash refund API; manual Send Money payments are refunded by hand and only
+   * recorded here. A full refund also removes the plan's months.
+   */
+  async refund(paymentId: string, by: string, input: { amountBdt?: number; reason: string; refundTrxId?: string }) {
+    const payment = await this.paymentModel.findById(paymentId);
+    if (!payment) throw new NotFoundException("Payment not found");
+    if (payment.status !== "approved") throw new BadRequestException("Only approved payments can be refunded");
+
+    const paid = payment.method === "bkash_online" ? payment.amountBdt : (payment.payableBdt ?? payment.amountBdt);
+    const remaining = Math.round((paid - (payment.refundedBdt ?? 0)) * 100) / 100;
+    const amount = input.amountBdt ?? remaining;
+    if (amount <= 0 || amount > remaining) {
+      throw new BadRequestException(`Refund must be between 1 and ${remaining} tk`);
+    }
+    if (payment.method === "bkash_online") {
+      if (!payment.bkashPaymentId || !payment.transactionId) throw new BadRequestException("This payment has no bKash reference");
+    } else if (!input.refundTrxId) {
+      throw new BadRequestException("Send the money back by bKash first, then enter that transaction ID");
+    }
+
+    // Claim the payment so a double click or a second admin can't refund it twice.
+    const claimed = await this.paymentModel.findOneAndUpdate(
+      { _id: payment._id, status: "approved", refundLock: { $ne: true } },
+      { refundLock: true },
+      { new: true },
+    );
+    if (!claimed) throw new BadRequestException("A refund for this payment is already in progress");
+
+    try {
+      let refundTrxId = input.refundTrxId?.trim().toUpperCase();
+      if (payment.method === "bkash_online") {
+        let result: BkashResponse | null = null;
+        try {
+          result = await this.bkash.refund({
+            paymentID: payment.bkashPaymentId!,
+            trxID: payment.transactionId!,
+            amount,
+            reason: input.reason,
+            sku: `${payment.planCode}-${payment.months}m`,
+          });
+        } catch (error) {
+          this.logger.warn(`bKash refund errored for ${payment.bkashPaymentId}: ${(error as Error).message}`);
+          // The refund may have gone through before the connection dropped: ask bKash.
+          const known = new Set((payment.refunds ?? []).map((r) => r.refundTrxId));
+          const status = await this.bkash.refundStatus(payment.bkashPaymentId!, payment.transactionId!).catch(() => null);
+          if (status?.transactionStatus === "Completed" && status.refundTrxID && !known.has(status.refundTrxID)) {
+            result = status;
+          } else {
+            throw new ServiceUnavailableException(
+              "bKash did not answer. Check the payment in the bKash merchant panel before trying again.",
+            );
+          }
+        }
+        if (result.transactionStatus !== "Completed" || !result.refundTrxID) {
+          throw new BadRequestException(result.statusMessage ?? result.errorMessage ?? result.message ?? "bKash refused the refund");
+        }
+        refundTrxId = result.refundTrxID;
+      }
+
+      const refundedBdt = Math.round(((payment.refundedBdt ?? 0) + amount) * 100) / 100;
+      const full = refundedBdt >= paid;
+      const updated = await this.paymentModel.findByIdAndUpdate(
+        payment._id,
+        {
+          $push: {
+            refunds: {
+              amountBdt: amount,
+              refundTrxId,
+              reason: input.reason,
+              by,
+              at: new Date(),
+              via: payment.method === "bkash_online" ? "bkash_api" : "manual",
+            },
+          },
+          refundedBdt,
+          ...(full ? { status: "refunded" } : {}),
+        },
+        { new: true },
+      );
+      if (full) await this.subscriptionsService.revoke(payment.shopId, payment.months);
+      return updated!.toObject();
+    } finally {
+      await this.paymentModel.updateOne({ _id: payment._id }, { refundLock: false });
+    }
   }
 
   async reject(paymentId: string, reviewedBy: string, note?: string) {

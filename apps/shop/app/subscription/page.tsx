@@ -44,7 +44,7 @@ interface Payment {
   senderNumber?: string;
   months?: number;
   transactionId?: string;
-  status: "pending" | "approved" | "rejected";
+  status: "pending" | "approved" | "rejected" | "refunded";
   createdAt: string;
 }
 
@@ -52,6 +52,7 @@ const PAYMENT_STYLE: Record<string, { badge: string; dot: string }> = {
   approved: { badge: "bg-emerald-50 text-emerald-700", dot: "bg-emerald-500" },
   pending: { badge: "bg-amber-50 text-amber-800", dot: "bg-amber-500" },
   rejected: { badge: "bg-red-50 text-red-700", dot: "bg-red-500" },
+  refunded: { badge: "bg-violet-50 text-violet-700", dot: "bg-violet-500" },
 };
 
 const SUB_STYLE: Record<string, { dot: string; text: string }> = {

@@ -48,6 +48,20 @@ export class SubscriptionsService {
   }
 
   /**
+   * Takes a refunded plan's months back off the shop's paid period. If nothing
+   * paid is left, the subscription is cancelled (the shop is locked).
+   */
+  async revoke(shopId: string, months: number) {
+    const current = await this.subscriptionModel.findOne({ shopId }).lean();
+    if (!current || current.status !== "active" || !current.nextBillingDate) return current;
+    const nextBillingDate = addMonths(current.nextBillingDate, -months);
+    const status = nextBillingDate.getTime() > Date.now() ? "active" : "cancelled";
+    return this.subscriptionModel
+      .findOneAndUpdate({ shopId }, { nextBillingDate, status }, { new: true })
+      .lean();
+  }
+
+  /**
    * Live subscription per shop for the admin app, keyed by shopId. Status is the
    * effective one, with "grace" for a paid shop past its billing date but still
    * inside the platform's grace days.

@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Store, AlertCircle, Search } from "lucide-react";
 import { apiRequest } from "../../lib/api";
@@ -36,6 +38,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function ShopsPage() {
+  const router = useRouter();
   const [shops, setShops] = useState<Shop[]>([]);
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
@@ -120,8 +123,16 @@ export default function ShopsPage() {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {filtered.map((shop) => (
-              <tr key={shop._id} className="hover:bg-slate-50 transition-colors">
-                <td className="px-6 py-4 font-medium text-slate-800">{shop.name}</td>
+              <tr
+                key={shop._id}
+                onClick={() => router.push(`/shops/${shop._id}`)}
+                className="hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                <td className="px-6 py-4 font-medium text-slate-800">
+                  <Link href={`/shops/${shop._id}`} onClick={(e) => e.stopPropagation()} className="hover:text-sky-700 hover:underline">
+                    {shop.name}
+                  </Link>
+                </td>
                 <td className="px-6 py-4 text-slate-600">{shop.ownerName}</td>
                 <td className="px-6 py-4 text-slate-600 font-mono text-xs">{shop.phone}</td>
                 <td className="px-6 py-4">
