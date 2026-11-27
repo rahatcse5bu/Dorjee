@@ -153,6 +153,8 @@ const en = {
 
   // Home page
   "home.login": "Sign in",
+  "home.customerLogin": "Customer login",
+  "home.customerShort": "Customer",
   "home.navFeatures": "Features",
   "home.navPricing": "Pricing",
   "home.startTrial": "Start free trial",
@@ -845,6 +847,8 @@ const bn: Record<TranslationKey, string> = {
   "dash.chartLabel": "দৈনিক আদায়, গত ১৪ দিন",
 
   "home.login": "সাইন ইন",
+  "home.customerLogin": "কাস্টমার লগইন",
+  "home.customerShort": "কাস্টমার",
   "home.navFeatures": "সুবিধা",
   "home.navPricing": "দাম",
   "home.startTrial": "ফ্রি ট্রায়াল শুরু করুন",

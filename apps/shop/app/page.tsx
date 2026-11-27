@@ -12,11 +12,13 @@ import {
   Printer,
   Ruler,
   Scissors,
+  UserRound,
   Users,
 } from "lucide-react";
 import { btnPrimary, btnSecondary } from "../components/ui";
 import { API_BASE } from "../lib/api";
 import { getShopToken } from "../lib/auth";
+import { getCustomerToken } from "../lib/customer-auth";
 import { TranslationKey, useI18n } from "../lib/i18n";
 import { useTrialDays } from "../lib/trial";
 
@@ -52,8 +54,8 @@ const STEPS: Array<{ title: TranslationKey; body: TranslationKey }> = [
 function Logo() {
   return (
     <span className="flex items-center gap-2">
-      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal font-bold text-white shadow-sm">D</span>
-      <span className="text-lg font-bold text-ink">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal font-bold text-white shadow-sm">D</span>
+      <span className="whitespace-nowrap text-lg font-bold text-ink">
         Dorjee <span className="text-teal">Shop</span>
       </span>
     </span>
@@ -137,7 +139,12 @@ export default function HomePage() {
   const trialDays = useTrialDays();
   const [signedIn, setSignedIn] = useState(false);
 
-  useEffect(() => setSignedIn(!!getShopToken()), []);
+  // Customers of Dorjee shops sign in separately, to see their own orders.
+  const [customerSignedIn, setCustomerSignedIn] = useState(false);
+  useEffect(() => {
+    setSignedIn(!!getShopToken());
+    setCustomerSignedIn(!!getCustomerToken());
+  }, []);
 
   const [plans, setPlans] = useState<Plan[]>(DEFAULT_PLANS);
   useEffect(() => {
@@ -183,18 +190,26 @@ export default function HomePage() {
             <button
               type="button"
               onClick={() => setLang(lang === "en" ? "bn" : "en")}
-              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-ink/65 hover:text-teal"
+              className="inline-flex items-center gap-1.5 rounded-lg px-2 py-2 text-sm font-medium text-ink/65 hover:text-teal sm:px-3"
             >
               <Languages className="h-4 w-4" />
               <span className="hidden sm:inline">{t("nav.language")}</span>
             </button>
+            <Link
+              href={customerSignedIn ? "/my" : "/my/login"}
+              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg px-2 py-2 text-sm font-semibold text-ink/80 hover:text-teal sm:px-3"
+            >
+              <UserRound className="h-4 w-4" />
+              <span className="hidden sm:inline">{t(customerSignedIn ? "my.myOrders" : "home.customerLogin")}</span>
+              <span className="sm:hidden">{t(customerSignedIn ? "my.myOrders" : "home.customerShort")}</span>
+            </Link>
             {signedIn ? (
               <Link href="/dashboard" className={btnPrimary}>
                 {t("home.goDashboard")}
               </Link>
             ) : (
               <>
-                <Link href="/login" className="rounded-lg px-3 py-2 text-sm font-semibold text-ink/80 hover:text-teal">
+                <Link href="/login" className="whitespace-nowrap rounded-lg px-2 py-2 text-sm font-semibold text-ink/80 hover:text-teal sm:px-3">
                   {t("home.login")}
                 </Link>
                 <Link href="/register" className={`${btnPrimary} hidden sm:inline-flex`}>
