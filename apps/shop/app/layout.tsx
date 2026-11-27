@@ -23,7 +23,10 @@ export const metadata = {
   title: "Dorjee Shop",
   description: "Tailor shop dashboard",
   applicationName: "Dorjee",
-  // iPhone/iPad home-screen app (the web app manifest is linked via app/manifest.ts).
+  // The shop app's manifest (public/manifest.webmanifest). It's a plain file linked
+  // here, not app/manifest.ts, so the customer app's layout (app/my) can link its own.
+  manifest: "/manifest.webmanifest",
+  // iPhone/iPad home-screen app.
   appleWebApp: {
     capable: true,
     title: "Dorjee",

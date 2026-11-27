@@ -11,7 +11,11 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
+// The shop app and the customer app (/my) install separately, so each remembers its own "Not now".
 const DISMISS_KEY = "dorjee_pwa_dismissed_at";
+const CUSTOMER_DISMISS_KEY = "dorjee_my_pwa_dismissed_at";
+
+const isCustomerPath = (pathname: string | null) => !!pathname && (pathname === "/my" || pathname.startsWith("/my/"));
 const DISMISS_DAYS = 14;
 
 function isStandalone() {
@@ -21,8 +25,8 @@ function isStandalone() {
   );
 }
 
-function recentlyDismissed() {
-  const at = Number(localStorage.getItem(DISMISS_KEY) || 0);
+function recentlyDismissed(key: string) {
+  const at = Number(localStorage.getItem(key) || 0);
   return Date.now() - at < DISMISS_DAYS * 24 * 60 * 60 * 1000;
 }
 
@@ -32,6 +36,8 @@ export function PwaSetup() {
   const pathname = usePathname();
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [showIosHint, setShowIosHint] = useState(false);
+  const customerApp = isCustomerPath(pathname);
+  const dismissKey = customerApp ? CUSTOMER_DISMISS_KEY : DISMISS_KEY;
 
   useEffect(() => {
     // Only in production builds: in dev, a service worker would cache hot-reloaded chunks.
@@ -41,7 +47,7 @@ export function PwaSetup() {
       });
     }
 
-    if (isStandalone() || recentlyDismissed()) return;
+    if (isStandalone() || recentlyDismissed(dismissKey)) return;
 
     const onPrompt = (e: Event) => {
       e.preventDefault();
@@ -61,10 +67,11 @@ export function PwaSetup() {
       window.removeEventListener("beforeinstallprompt", onPrompt);
       window.removeEventListener("appinstalled", onInstalled);
     };
-  }, []);
+    // Moving between the shop app and the customer app switches which app is offered.
+  }, [dismissKey]);
 
   const dismiss = () => {
-    localStorage.setItem(DISMISS_KEY, String(Date.now()));
+    localStorage.setItem(dismissKey, String(Date.now()));
     setInstallEvent(null);
     setShowIosHint(false);
   };
@@ -84,14 +91,14 @@ export function PwaSetup() {
     <div
       role="dialog"
       aria-label={t("pwa.title")}
-      className="fixed inset-x-3 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-50 mx-auto max-w-md rounded-2xl bg-white p-4 shadow-xl ring-1 ring-ink/10 sm:left-auto sm:right-6 sm:mx-0 lg:bottom-6"
+      className={`fixed inset-x-3 ${customerApp ? "bottom-[calc(1rem+env(safe-area-inset-bottom))]" : "bottom-[calc(5.5rem+env(safe-area-inset-bottom))]"} z-50 mx-auto max-w-md rounded-2xl bg-white p-4 shadow-xl ring-1 ring-ink/10 sm:left-auto sm:right-6 sm:mx-0 lg:bottom-6`}
     >
       <div className="flex items-start gap-3">
         <img src="/icons/icon-192.png" alt="" className="h-11 w-11 shrink-0 rounded-xl" />
         <div className="min-w-0 flex-1">
-          <p className="font-semibold text-ink">{t("pwa.title")}</p>
+          <p className="font-semibold text-ink">{t(customerApp ? "pwa.myTitle" : "pwa.title")}</p>
           {installEvent ? (
-            <p className="mt-0.5 text-sm text-ink/70">{t("pwa.body")}</p>
+            <p className="mt-0.5 text-sm text-ink/70">{t(customerApp ? "pwa.myBody" : "pwa.body")}</p>
           ) : (
             <p className="mt-0.5 text-sm text-ink/70">
               {t("pwa.iosHint")} <Share className="mb-0.5 inline h-4 w-4" aria-label="Share" />{" "}

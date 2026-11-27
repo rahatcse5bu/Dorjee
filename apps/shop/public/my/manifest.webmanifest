@@ -1,0 +1,19 @@
+{
+  "id": "/my",
+  "name": "Dorjee — My Orders",
+  "short_name": "My Dorjee",
+  "description": "Track your tailoring orders and order again from your tailor.",
+  "start_url": "/my",
+  "scope": "/my",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fdf8f1",
+  "theme_color": "#177e89",
+  "lang": "bn",
+  "categories": ["shopping", "lifestyle"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
