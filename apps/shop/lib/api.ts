@@ -1,4 +1,5 @@
 import { clearShopAuth } from "./auth";
+import { clearCustomerAuth } from "./customer-auth";
 
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ?? "http://localhost:4000/api";
@@ -83,10 +84,16 @@ export async function apiRequest<T>(
 
   if (!response.ok) {
     const message = readErrorMessage(await response.text(), response.status);
-    // An expired session on any authenticated call sends the user back to login.
+    // An expired session on any authenticated call sends the user back to login:
+    // customers to the customer app's sign-in, staff to the shop's.
     if (response.status === 401 && token && typeof window !== "undefined") {
-      clearShopAuth();
-      window.location.href = "/login?expired=1";
+      if (path.startsWith("/customer/")) {
+        clearCustomerAuth();
+        window.location.href = "/my/login?expired=1";
+      } else {
+        clearShopAuth();
+        window.location.href = "/login?expired=1";
+      }
     }
     // The shop's trial or plan ended: the app swaps the page for the subscribe screen.
     if (response.status === 402 && typeof window !== "undefined") {

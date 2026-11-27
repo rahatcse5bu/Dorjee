@@ -8,6 +8,10 @@ export interface Customer {
   /** Legacy flat measurements; used as a fallback for pre-filling. */
   measurements?: Measurements;
   measurementsByType?: Record<string, Measurements>;
+  /** Set when the customer has connected the customer app. */
+  accountId?: string | null;
+  /** When the open customer-app invite code stops working. */
+  appInviteExpiresAt?: string | null;
   createdAt?: string;
 }
 
@@ -121,6 +125,9 @@ export interface Order {
   deliveryDate?: string | null;
   assignedTo?: string | null;
   notes?: string;
+  /** "customer" when the customer placed it from the customer app. */
+  source?: "shop" | "customer";
+  customerNote?: string;
   createdAt?: string;
 }
 

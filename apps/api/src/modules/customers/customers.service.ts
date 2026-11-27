@@ -4,6 +4,7 @@ import { isValidObjectId, Model } from "mongoose";
 import { Customer, CustomerDocument } from "./schemas/customer.schema";
 import { CreateCustomerDto } from "./dto/create-customer.dto";
 import { UpdateCustomerDto } from "./dto/update-customer.dto";
+import { hashInviteCode, INVITE_TTL_DAYS, newInviteCode } from "../common/customer-app";
 
 @Injectable()
 export class CustomersService {
@@ -38,6 +39,33 @@ export class CustomersService {
       throw new NotFoundException("Customer not found");
     }
     return updated;
+  }
+
+  /**
+   * A one-time code the customer uses to connect the customer app to this record.
+   * A new code replaces any earlier one. Returned once; only its hash is stored.
+   */
+  async createAppInvite(shopId: string, customerId: string) {
+    await this.findOne(shopId, customerId);
+    const code = newInviteCode();
+    const expiresAt = new Date(Date.now() + INVITE_TTL_DAYS * 86_400_000);
+    await this.customerModel.updateOne(
+      { _id: customerId, shopId },
+      { $set: { appInviteHash: hashInviteCode(code), appInviteExpiresAt: expiresAt } },
+    );
+    return { code, expiresAt };
+  }
+
+  /** Disconnects the customer app account and voids any open invite. */
+  async unlinkApp(shopId: string, customerId: string) {
+    await this.findOne(shopId, customerId);
+    return this.customerModel
+      .findOneAndUpdate(
+        { _id: customerId, shopId },
+        { $set: { accountId: null, appInviteHash: null, appInviteExpiresAt: null } },
+        { new: true },
+      )
+      .lean();
   }
 
   async remove(shopId: string, customerId: string) {

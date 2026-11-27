@@ -3,7 +3,12 @@ import { HydratedDocument } from "mongoose";
 
 export type NotificationDocument = HydratedDocument<Notification>;
 
-export const NOTIFICATION_TYPES = ["order_assigned", "order_unassigned"] as const;
+export const NOTIFICATION_TYPES = [
+  "order_assigned",
+  "order_unassigned",
+  "customer_order",
+  "customer_order_cancelled",
+] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
 const NINETY_DAYS = 90 * 24 * 60 * 60;

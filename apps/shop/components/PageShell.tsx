@@ -10,6 +10,7 @@ import { NotificationsProvider } from "../lib/notifications";
 import { moduleForPath, PermissionsProvider, usePermissions } from "../lib/permissions";
 import { OPEN_WHEN_LOCKED, SubscriptionAccessProvider, useSubscriptionAccess } from "../lib/subscription";
 import { BottomNav } from "./BottomNav";
+import { CustomerShell } from "./CustomerShell";
 import { NotificationBell } from "./NotificationBell";
 import { SidebarNav } from "./SidebarNav";
 
@@ -28,18 +29,25 @@ export function PageShell({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const isPublicPage = !!pathname && PUBLIC_PATHS.includes(pathname);
+  // The customer app (/my) has its own sign-in and frame.
+  const isCustomerApp = !!pathname && (pathname === "/my" || pathname.startsWith("/my/"));
 
   // Signed-out visitors are sent to login; pages render only after this check
   // so they can read the session from localStorage safely.
   useEffect(() => {
+    if (isCustomerApp) return;
     if (!isPublicPage && !getShopToken()) {
       router.replace("/login");
       return;
     }
     setReady(true);
-  }, [isPublicPage, router]);
+  }, [isPublicPage, isCustomerApp, router]);
 
   useEffect(() => setDrawerOpen(false), [pathname]);
+
+  if (isCustomerApp) {
+    return <CustomerShell>{children}</CustomerShell>;
+  }
 
   if (!ready) {
     return (

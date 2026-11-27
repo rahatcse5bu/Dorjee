@@ -5,6 +5,7 @@ import { AdminModule } from "./admin/admin.module";
 import { AuthModule } from "./auth/auth.module";
 import { BackupModule } from "./backup/backup.module";
 import { CatalogModule } from "./catalog/catalog.module";
+import { CustomerPortalModule } from "./customer-portal/customer-portal.module";
 import { CustomersModule } from "./customers/customers.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { OrdersModule } from "./orders/orders.module";
@@ -27,6 +28,7 @@ import { UsersModule } from "./users/users.module";
     ShopsModule,
     CatalogModule,
     CustomersModule,
+    CustomerPortalModule,
     OrdersModule,
     SubscriptionsModule,
     PaymentsModule,

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ClipboardList, MapPin, Pencil, Phone, Plus, Ruler, Save, Trash2, Users } from "lucide-react";
+import { CustomerAppCard } from "../../../components/CustomerAppCard";
 import { CustomerFormModal } from "../../../components/CustomerFormModal";
 import { NewOrderModal } from "../../../components/orders/NewOrderModal";
 import { MeasurementInput } from "../../../components/orders/MeasurementField";
@@ -232,6 +233,8 @@ export default function CustomerProfilePage() {
           </div>
         ))}
       </div>
+
+      <CustomerAppCard customer={customer} shopId={shopId} token={token} canManage={canManage} onChange={setCustomer} />
 
       <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
         {/* Order history */}

@@ -47,6 +47,28 @@ export class NotificationsService {
     }
   }
 
+  /**
+   * Tells the shop's owners and managers that a customer placed or cancelled an
+   * order from the customer app. Failures are logged, not thrown.
+   */
+  async customerOrderEvent(
+    shopId: string,
+    order: OrderRef,
+    customerName: string,
+    type: "customer_order" | "customer_order_cancelled",
+  ) {
+    try {
+      const recipients = await this.userModel
+        .find({ shopId, role: { $in: ["shop_owner", "manager"] }, active: { $ne: false } })
+        .select("_id")
+        .lean();
+      const data = { orderId: String(order._id), orderNo: order.orderNo, customerName };
+      await this.notificationModel.insertMany(recipients.map((u) => ({ shopId, userId: String(u._id), type, data })));
+    } catch (err) {
+      this.logger.warn(`Could not create customer order notification: ${err instanceof Error ? err.message : err}`);
+    }
+  }
+
   async listForUser(shopId: string, userId: string) {
     const [items, unread] = await Promise.all([
       this.notificationModel.find({ shopId, userId }).sort({ createdAt: -1 }).limit(50).lean(),

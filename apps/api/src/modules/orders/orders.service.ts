@@ -153,6 +153,66 @@ export class OrdersService {
     return order;
   }
 
+  /**
+   * An order request a customer placed from the customer app. It starts as a
+   * draft so the shop can check the price and date before confirming it.
+   */
+  async createFromCustomer(
+    shopId: string,
+    customer: { _id: unknown; name: string },
+    items: Array<{
+      clothType: string;
+      price: number;
+      quantity: number;
+      measurements: Record<string, string | number | boolean>;
+      fabricSource?: string;
+      fabric?: string;
+      color?: string;
+      styleNotes?: string;
+    }>,
+    extra: { customerNote?: string; deliveryDate?: Date | null },
+  ) {
+    await this.backfillOrderNumbers(shopId);
+    const orderNo = await this.nextOrderNo(shopId);
+    const normalizedItems = this.normalizeOrderItems(items);
+    const order = await this.orderModel.create({
+      shopId,
+      orderNo,
+      customerId: String(customer._id),
+      orderItems: normalizedItems,
+      clothType: normalizedItems[0].clothType,
+      measurements: normalizedItems[0].measurements,
+      amount: this.totalAmount(normalizedItems),
+      discount: 0,
+      paidAmount: 0,
+      payments: [],
+      status: "draft",
+      statusHistory: [{ status: "draft", by: null }],
+      deliveryDate: extra.deliveryDate ?? null,
+      assignedTo: null,
+      source: "customer",
+      customerNote: extra.customerNote || undefined,
+    });
+    await this.notificationsService.customerOrderEvent(shopId, order, customer.name, "customer_order");
+    return order.toObject();
+  }
+
+  /** A customer withdraws their own request; only while the shop hasn't confirmed it. */
+  async cancelFromCustomer(shopId: string, orderId: string, customer: { _id: unknown; name: string }) {
+    const order = await this.orderModel
+      .findOneAndUpdate(
+        { _id: orderId, shopId, customerId: String(customer._id), source: "customer", status: "draft" },
+        { $set: { status: "cancelled" }, $push: { statusHistory: { status: "cancelled", at: new Date(), by: null } } },
+        { new: true },
+      )
+      .lean();
+    if (!order) {
+      throw new BadRequestException("This order can no longer be cancelled. Please contact the shop.");
+    }
+    await this.notificationsService.customerOrderEvent(shopId, order, customer.name, "customer_order_cancelled");
+    return order;
+  }
+
   async list(shopId: string, filter: ListOrdersFilter = {}) {
     await this.backfillOrderNumbers(shopId);
 

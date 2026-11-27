@@ -7,7 +7,7 @@ import { AlertTriangle, CalendarClock, ChevronRight, ClipboardList, Plus, Search
 import { NEW_ORDER_EVENT } from "../../components/BottomNav";
 import { NewOrderModal } from "../../components/orders/NewOrderModal";
 import { AssigneeSelect } from "../../components/orders/AssigneeSelect";
-import { DeliveryLabel, StatusSelect } from "../../components/orders/OrderBits";
+import { DeliveryLabel, FromCustomerBadge, StatusSelect } from "../../components/orders/OrderBits";
 import { useToast } from "../../components/Toast";
 import { Alert, btnPrimary, cardClass, EmptyState, inputClass, PageHeader, Skeleton, StatusBadge } from "../../components/ui";
 import { apiRequest } from "../../lib/api";
@@ -272,6 +272,11 @@ export default function OrdersPage() {
                           <Link href={`/orders/${order._id}`} className="font-mono text-sm font-semibold text-ink hover:text-teal" onClick={(e) => e.stopPropagation()}>
                             {formatOrderNo(order)}
                           </Link>
+                          {order.source === "customer" && (
+                            <span className="ml-1.5 align-middle">
+                              <FromCustomerBadge compact />
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           <p className="font-medium text-ink">{customer?.name ?? "—"}</p>
@@ -330,6 +335,7 @@ export default function OrdersPage() {
                         <div className="min-w-0">
                           <p className="flex items-center gap-2">
                             <span className="font-mono text-sm font-semibold text-ink">{formatOrderNo(order)}</span>
+                            {order.source === "customer" && <FromCustomerBadge compact />}
                             {isOverdue(order) && <AlertTriangle className="h-3.5 w-3.5 text-coral" />}
                           </p>
                           <p className="truncate text-sm font-medium text-ink">{customer?.name ?? "—"}</p>

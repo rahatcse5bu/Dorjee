@@ -20,7 +20,7 @@ import {
 import { DraftItem, draftsToItems, ItemsEditor, itemToDraft } from "../../../components/orders/ItemsEditor";
 import { AssigneeSelect } from "../../../components/orders/AssigneeSelect";
 import { MeasurementValue } from "../../../components/orders/MeasurementField";
-import { DeliveryLabel, ItemFabricDetails } from "../../../components/orders/OrderBits";
+import { DeliveryLabel, FromCustomerBadge, ItemFabricDetails } from "../../../components/orders/OrderBits";
 import { useToast } from "../../../components/Toast";
 import {
   Alert,
@@ -311,6 +311,7 @@ export default function OrderDetailPage() {
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-2xl font-bold text-ink sm:text-3xl">{t("order.title", { no: formatOrderNo(order) })}</h1>
               <StatusBadge status={order.status} />
+              {order.source === "customer" && <FromCustomerBadge />}
             </div>
             <p className="mt-1 text-sm shop-quiet">{t("order.created", { date: date(order.createdAt) })}</p>
           </div>
@@ -328,6 +329,17 @@ export default function OrderDetailPage() {
           </div>
         </div>
       </div>
+
+      {order.source === "customer" && (order.status === "draft" || order.customerNote) && (
+        <div className="rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-900">
+          {order.status === "draft" && <p className="font-medium">{t("app.reviewRequest", { name: customer?.name ?? "—" })}</p>}
+          {order.customerNote && (
+            <p className={order.status === "draft" ? "mt-1.5" : ""}>
+              <span className="font-semibold">{t("app.customerNote")}:</span> <span className="whitespace-pre-wrap">{order.customerNote}</span>
+            </p>
+          )}
+        </div>
+      )}
 
       {canSeeAmounts && due > 0 && order.status === "ready" && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">

@@ -14,6 +14,9 @@ export const ORDER_STATUSES = [
 
 export const PAYMENT_METHODS = ["cash", "bkash", "nagad", "card", "other"] as const;
 
+/** Who created the order: shop staff, or the customer through the customer app. */
+export const ORDER_SOURCES = ["shop", "customer"] as const;
+
 /** Whose cloth the garment is made from. */
 export const FABRIC_SOURCES = ["customer", "shop"] as const;
 
@@ -137,6 +140,13 @@ export class Order {
 
   @Prop({ trim: true })
   notes?: string;
+
+  @Prop({ type: String, enum: ORDER_SOURCES, default: "shop" })
+  source?: string;
+
+  // What the customer wrote when ordering from the customer app; shown to the shop.
+  @Prop({ trim: true })
+  customerNote?: string;
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);

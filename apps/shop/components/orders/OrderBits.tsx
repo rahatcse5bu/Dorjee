@@ -1,5 +1,6 @@
 "use client";
 
+import { Smartphone } from "lucide-react";
 import { useI18n } from "../../lib/i18n";
 import { daysUntilDelivery, hasFabricDetails, OPEN_STATUSES, Order, OrderItem, ORDER_STATUSES } from "../../lib/orders";
 import { StatusBadge } from "../ui";
@@ -79,5 +80,19 @@ export function ItemFabricDetails({ item, variant = "screen" }: { item: OrderIte
         </p>
       )}
     </div>
+  );
+}
+
+/** Marks orders the customer placed from the customer app. */
+export function FromCustomerBadge({ compact = false }: { compact?: boolean }) {
+  const { t } = useI18n();
+  return (
+    <span
+      title={t("app.fromCustomer")}
+      className="inline-flex items-center gap-1 whitespace-nowrap rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-700 ring-1 ring-inset ring-violet-200"
+    >
+      <Smartphone className="h-3 w-3" />
+      {!compact && t("app.fromCustomer")}
+    </span>
   );
 }

@@ -48,6 +48,18 @@ export class CustomersController {
     return this.customersService.update(shopId, customerId, payload);
   }
 
+  @Post(":customerId/app-invite")
+  @RequirePermission(["customers", "manage"])
+  createAppInvite(@Param("shopId") shopId: string, @Param("customerId") customerId: string) {
+    return this.customersService.createAppInvite(shopId, customerId);
+  }
+
+  @Delete(":customerId/app-link")
+  @RequirePermission(["customers", "manage"])
+  unlinkApp(@Param("shopId") shopId: string, @Param("customerId") customerId: string) {
+    return this.customersService.unlinkApp(shopId, customerId);
+  }
+
   @Delete(":customerId")
   @RequirePermission(["customers", "manage"])
   remove(@Param("shopId") shopId: string, @Param("customerId") customerId: string) {

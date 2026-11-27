@@ -10,7 +10,7 @@ const POLL_MS = 20_000;
 
 export interface AppNotification {
   _id: string;
-  type: "order_assigned" | "order_unassigned";
+  type: "order_assigned" | "order_unassigned" | "customer_order" | "customer_order_cancelled";
   data: { orderId?: string; orderNo?: number; customerName?: string; actorName?: string };
   readAt?: string | null;
   createdAt: string;
@@ -38,7 +38,13 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const message = useCallback(
     (n: AppNotification) => {
       const no = n.data.orderNo ? `#${String(n.data.orderNo).padStart(4, "0")}` : "";
-      return t(n.type === "order_assigned" ? "notif.assigned" : "notif.unassigned", {
+      const key = {
+        order_assigned: "notif.assigned",
+        order_unassigned: "notif.unassigned",
+        customer_order: "notif.customerOrder",
+        customer_order_cancelled: "notif.customerCancelled",
+      } as const;
+      return t(key[n.type] ?? "notif.assigned", {
         actor: n.data.actorName || t("notif.someone"),
         no,
         customer: n.data.customerName ?? "—",
