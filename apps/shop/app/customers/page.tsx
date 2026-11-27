@@ -8,6 +8,8 @@ import { CustomerFormModal } from "../../components/CustomerFormModal";
 import { useToast } from "../../components/Toast";
 import { Alert, btnIcon, btnPrimary, cardClass, EmptyState, inputClass, PageHeader, Skeleton } from "../../components/ui";
 import { apiRequest } from "../../lib/api";
+import { CustomerUsage, isFull } from "../../lib/limits";
+import { LimitMeter } from "../../components/LimitMeter";
 import { useI18n } from "../../lib/i18n";
 import { Customer, dueAmount, Order } from "../../lib/orders";
 import { usePermissions } from "../../lib/permissions";
@@ -35,6 +37,7 @@ export default function CustomersPage() {
   const [query, setQuery] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Customer | null>(null);
+  const [usage, setUsage] = useState<CustomerUsage | null>(null);
 
   async function load() {
     try {
@@ -42,6 +45,7 @@ export default function CustomersPage() {
         apiRequest<Customer[]>(`/shops/${shopId}/customers`, {}, token),
         apiRequest<Order[]>(`/shops/${shopId}/orders`, {}, token).catch(() => []),
       ]);
+      apiRequest<CustomerUsage>(`/shops/${shopId}/customers/limits`, {}, token).then(setUsage).catch(() => undefined);
       setCustomers(customerResult);
       setOrders(orderResult);
     } catch (err) {
@@ -84,6 +88,10 @@ export default function CustomersPage() {
     }
   }
 
+  // The customer list holds every customer, so its length is the live count.
+  const limit = usage?.customers.limit ?? 0;
+  const atLimit = !loading && isFull({ used: customers.length, limit });
+
   function openCreate() {
     setEditing(null);
     setFormOpen(true);
@@ -96,13 +104,29 @@ export default function CustomersPage() {
         subtitle={t("customers.sub")}
         actions={
           canManage ? (
-            <button type="button" className={btnPrimary} onClick={openCreate}>
-              <UserPlus className="h-4 w-4" />
-              {t("customers.add")}
-            </button>
+            <>
+              {limit > 0 && (
+                <LimitMeter
+                  used={customers.length}
+                  limit={limit}
+                  label={t("limits.customers", { used: customers.length, limit })}
+                  note={usage?.trial ? t("limits.trial") : undefined}
+                />
+              )}
+              <button type="button" className={btnPrimary} onClick={openCreate} disabled={atLimit}>
+                <UserPlus className="h-4 w-4" />
+                {t("customers.add")}
+              </button>
+            </>
           ) : undefined
         }
       />
+
+      {canManage && atLimit && (
+        <Alert>
+          {t("limits.full", { limit })} {usage?.trial && t("limits.trialMore")}
+        </Alert>
+      )}
 
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink/35" />

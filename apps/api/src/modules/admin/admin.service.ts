@@ -1,7 +1,9 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { isValidObjectId, Model } from "mongoose";
+import { CustomerLimitsService } from "../customers/customer-limits.service";
 import { Customer, CustomerDocument } from "../customers/schemas/customer.schema";
+import { UpdateShopLimitsDto } from "./dto/update-shop-limits.dto";
 import { Order, OrderDocument } from "../orders/schemas/order.schema";
 import { Payment, PaymentDocument } from "../payments/schemas/payment.schema";
 import { Shop, ShopDocument } from "../shops/schemas/shop.schema";
@@ -17,7 +19,20 @@ export class AdminService {
     @InjectModel(Customer.name) private readonly customerModel: Model<CustomerDocument>,
     @InjectModel(Payment.name) private readonly paymentModel: Model<PaymentDocument>,
     private readonly subscriptions: SubscriptionsService,
+    private readonly limits: CustomerLimitsService,
   ) {}
+
+  /** Sets or clears this shop's overrides of the platform customer limits. */
+  async updateShopLimits(shopId: string, dto: UpdateShopLimitsDto) {
+    if (!isValidObjectId(shopId)) throw new NotFoundException("Shop not found");
+    const set: Record<string, number | null> = {};
+    // undefined = not sent (leave as is); null = back to the platform setting.
+    if (dto.customerLimit !== undefined) set.customerLimitOverride = dto.customerLimit;
+    if (dto.appCustomerLimit !== undefined) set.appCustomerLimitOverride = dto.appCustomerLimit;
+    const updated = await this.shopModel.updateOne({ _id: shopId }, { $set: set });
+    if (updated.matchedCount === 0) throw new NotFoundException("Shop not found");
+    return this.limits.usage(shopId);
+  }
 
   /** Everything the admin app shows on a shop's page. Order contents and customer details stay private. */
   async shopOverview(shopId: string): Promise<Record<string, unknown>> {
@@ -64,6 +79,7 @@ export class AdminService {
       shop,
       subscription,
       access,
+      limits: await this.limits.usage(shopId),
       users,
       payments,
       stats: {

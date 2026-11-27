@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
+import { CustomersModule } from "../customers/customers.module";
 import { Customer, CustomerSchema } from "../customers/schemas/customer.schema";
 import { Order, OrderSchema } from "../orders/schemas/order.schema";
 import { Payment, PaymentSchema } from "../payments/schemas/payment.schema";
@@ -10,6 +11,7 @@ import { AdminService } from "./admin.service";
 
 @Module({
   imports: [
+    CustomersModule,
     MongooseModule.forFeature([
       { name: Shop.name, schema: ShopSchema },
       { name: User.name, schema: UserSchema },

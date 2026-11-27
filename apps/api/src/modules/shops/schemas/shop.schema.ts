@@ -44,6 +44,13 @@ export class Shop {
   booleanMeasurements!: string[];
 
   // Owner overrides of the default role permissions; see permissions.constants.ts.
+  // Admin overrides of the platform customer limits for this shop; null uses the platform value, 0 means no limit.
+  @Prop({ type: Number, default: null })
+  customerLimitOverride?: number | null;
+
+  @Prop({ type: Number, default: null })
+  appCustomerLimitOverride?: number | null;
+
   @Prop({ type: Object, default: undefined })
   rolePermissions?: Record<string, Record<string, string>>;
 }

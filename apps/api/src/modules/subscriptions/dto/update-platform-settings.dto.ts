@@ -64,4 +64,32 @@ export class UpdatePlatformSettingsDto {
   @IsOptional()
   @IsBoolean()
   bkashOnlineEnabled?: boolean;
+
+  // 0 means no limit.
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(1_000_000)
+  customerLimit?: number;
+
+  // 0 means no limit.
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(1_000_000)
+  appCustomerLimit?: number;
+
+  // 0 means no limit.
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(1_000_000)
+  trialCustomerLimit?: number;
+
+  // 0 means no limit.
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(1_000_000)
+  trialAppCustomerLimit?: number;
 }

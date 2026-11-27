@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import PaymentsTable, { AdminPayment, planLabel } from "../../../components/PaymentsTable";
 import RefundDialog from "../../../components/RefundDialog";
+import ShopLimitsCard, { CustomerUsage } from "../../../components/ShopLimitsCard";
 import { apiRequest } from "../../../lib/api";
 import { getAdminToken, getAdminUser } from "../../../lib/auth";
 
@@ -46,6 +47,7 @@ interface Overview {
   access: { locked: boolean; status: string; graceEndsAt?: string | null };
   users: Array<{ _id: string; email: string; name?: string; phone?: string; role: string; active?: boolean; createdAt: string }>;
   payments: AdminPayment[];
+  limits: CustomerUsage;
   stats: {
     customers: number;
     orders: number;
@@ -269,6 +271,16 @@ export default function ShopDetailsPage() {
             <p className="px-5 py-8 text-center text-sm text-slate-400">This shop has no subscription record.</p>
           )}
         </Card>
+      </div>
+
+      {/* Limits */}
+      <div className="mb-6">
+        <ShopLimitsCard
+          shopId={shop._id}
+          usage={data.limits}
+          canEdit={role === "super_admin" || role === "admin_finance"}
+          onSaved={(limits) => setData((d) => (d ? { ...d, limits } : d))}
+        />
       </div>
 
       {/* Team */}

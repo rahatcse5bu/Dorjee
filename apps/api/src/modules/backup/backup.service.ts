@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectConnection, InjectModel } from "@nestjs/mongoose";
 import { ClientSession, Connection, Model, Types } from "mongoose";
+import { CustomerLimitsService } from "../customers/customer-limits.service";
 import { Customer, CustomerDocument } from "../customers/schemas/customer.schema";
 import { OrderCounter, OrderCounterDocument } from "../orders/schemas/order-counter.schema";
 import { FABRIC_SOURCES, Order, ORDER_STATUSES, OrderDocument, PAYMENT_METHODS } from "../orders/schemas/order.schema";
@@ -56,6 +57,7 @@ export class BackupService {
     @InjectModel(Order.name) private readonly orderModel: Model<OrderDocument>,
     @InjectModel(OrderCounter.name) private readonly counterModel: Model<OrderCounterDocument>,
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
+    private readonly limits: CustomerLimitsService,
   ) {}
 
   async export(shopId: string) {
@@ -151,6 +153,20 @@ export class BackupService {
       if (current && member._id) staffMap.set(String(member._id), current);
     }
     const mapUser = (id: unknown) => (id ? staffMap.get(String(id)) ?? null : null);
+
+    // The restore may not take the shop over its customer limit. Checked before
+    // anything is deleted, so a refused restore leaves the shop as it was.
+    const incomingPhones = new Set<string>();
+    for (const raw of backup.customers as unknown[]) {
+      if (!isObject(raw)) continue;
+      const phone = str(raw.phone, 40);
+      if (str(raw.name, 120) && phone) incomingPhones.add(digits(phone));
+    }
+    if (mode === "merge") {
+      const existing = await this.customerModel.find({ shopId }).select("phone").session(session ?? null).lean();
+      for (const c of existing) incomingPhones.delete(digits(c.phone));
+    }
+    await this.limits.assertCanAddCustomers(shopId, incomingPhones.size, { replacingAll: mode === "replace" });
 
     if (mode === "replace") {
       await this.customerModel.deleteMany({ shopId }, opts);

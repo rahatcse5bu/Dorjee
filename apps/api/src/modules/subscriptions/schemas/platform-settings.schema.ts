@@ -50,6 +50,19 @@ export class PlatformSettings {
   @Prop({ default: true })
   bkashOnlineEnabled!: boolean;
 
+  // Customer limits per shop; 0 means no limit. Admins can override them per shop.
+  @Prop()
+  customerLimit?: number;
+
+  @Prop()
+  appCustomerLimit?: number;
+
+  @Prop()
+  trialCustomerLimit?: number;
+
+  @Prop()
+  trialAppCustomerLimit?: number;
+
   @Prop()
   updatedBy?: string;
 }

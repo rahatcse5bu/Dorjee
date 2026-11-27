@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { AlertCircle, AlertTriangle, CheckCircle, Clock, CreditCard, Loader2, Settings, Smartphone, Tag } from "lucide-react";
+import { AlertCircle, AlertTriangle, CheckCircle, Clock, CreditCard, Loader2, Settings, Smartphone, Tag, Users } from "lucide-react";
 import { apiRequest } from "../../lib/api";
 import { getAdminToken, getAdminUser } from "../../lib/auth";
 
@@ -21,8 +21,21 @@ interface PlatformSettings {
   manualPaymentEnabled: boolean;
   bkashOnlineEnabled: boolean;
   bkashCredentials: boolean;
+  customerLimit: number;
+  appCustomerLimit: number;
+  trialCustomerLimit: number;
+  trialAppCustomerLimit: number;
   updatedAt?: string;
 }
+
+type LimitKey = "customerLimit" | "appCustomerLimit" | "trialCustomerLimit" | "trialAppCustomerLimit";
+
+const LIMIT_ROWS: Array<{ key: LimitKey; label: string; hint: string }> = [
+  { key: "customerLimit", label: "Customers per shop", hint: "Customer records a paid shop can keep." },
+  { key: "appCustomerLimit", label: "Customer-app users per shop", hint: "Customers a paid shop can connect to the customer app." },
+  { key: "trialCustomerLimit", label: "Customers during trial", hint: "For shops still on the free trial." },
+  { key: "trialAppCustomerLimit", label: "Customer-app users during trial", hint: "For shops still on the free trial." },
+];
 
 const PLAN_NAMES: Record<string, string> = {
   MONTHLY: "1 month",
@@ -121,6 +134,10 @@ export default function SettingsPage() {
             cashoutPerThousand: settings.cashoutPerThousand,
             manualPaymentEnabled: settings.manualPaymentEnabled,
             bkashOnlineEnabled: settings.bkashOnlineEnabled,
+            customerLimit: settings.customerLimit,
+            appCustomerLimit: settings.appCustomerLimit,
+            trialCustomerLimit: settings.trialCustomerLimit,
+            trialAppCustomerLimit: settings.trialAppCustomerLimit,
           }),
         },
         getAdminToken() ?? undefined,
@@ -207,6 +224,30 @@ export default function SettingsPage() {
               <input type="number" min={0} max={90} required value={settings.graceDays} disabled={locked} onChange={(e) => set("graceDays", Number(e.target.value))} className={`${inputClass} w-24`} aria-label="Grace days" />
               <span className="text-xs text-slate-400 w-8">days</span>
             </Row>
+          </Section>
+
+          <Section
+            icon={Users}
+            title="Customer limits"
+            description="Caps for every shop; 0 means no limit. Raise them for one shop from that shop's page. Shops already over a lower limit keep their customers but can't add more."
+          >
+            {LIMIT_ROWS.map(({ key, label, hint }) => (
+              <Row key={key} label={label} hint={hint}>
+                <input
+                  type="number"
+                  min={0}
+                  max={1000000}
+                  step={1}
+                  required
+                  value={settings[key]}
+                  disabled={locked}
+                  onChange={(e) => set(key, Math.max(0, Math.round(Number(e.target.value))))}
+                  className={`${inputClass} w-28`}
+                  aria-label={label}
+                />
+                <span className="text-xs text-slate-400 w-14">{settings[key] === 0 ? "no limit" : "max"}</span>
+              </Row>
+            ))}
           </Section>
 
           <Section icon={CreditCard} title="Payment methods" description="At least one must stay on.">

@@ -4,15 +4,18 @@ import { isValidObjectId, Model } from "mongoose";
 import { Customer, CustomerDocument } from "./schemas/customer.schema";
 import { CreateCustomerDto } from "./dto/create-customer.dto";
 import { UpdateCustomerDto } from "./dto/update-customer.dto";
+import { CustomerLimitsService } from "./customer-limits.service";
 import { hashInviteCode, INVITE_TTL_DAYS, newInviteCode } from "../common/customer-app";
 
 @Injectable()
 export class CustomersService {
   constructor(
     @InjectModel(Customer.name) private readonly customerModel: Model<CustomerDocument>,
+    private readonly limits: CustomerLimitsService,
   ) {}
 
-  create(shopId: string, payload: CreateCustomerDto) {
+  async create(shopId: string, payload: CreateCustomerDto) {
+    await this.limits.assertCanAddCustomers(shopId);
     return this.customerModel.create({ ...payload, shopId });
   }
 
@@ -46,7 +49,8 @@ export class CustomersService {
    * A new code replaces any earlier one. Returned once; only its hash is stored.
    */
   async createAppInvite(shopId: string, customerId: string) {
-    await this.findOne(shopId, customerId);
+    const customer = await this.findOne(shopId, customerId);
+    await this.limits.assertCanConnectApp(shopId, customer);
     const code = newInviteCode();
     const expiresAt = new Date(Date.now() + INVITE_TTL_DAYS * 86_400_000);
     await this.customerModel.updateOne(

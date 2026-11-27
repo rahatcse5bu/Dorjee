@@ -23,6 +23,19 @@ export const DEFAULT_PAYMENT_SETTINGS = {
   graceDays: 0,
 };
 
+/**
+ * How many customers a shop may keep, and how many may use the customer app.
+ * 0 means no limit. Trial shops get the smaller trial limits.
+ */
+export const DEFAULT_CUSTOMER_LIMITS = {
+  customerLimit: 1000,
+  appCustomerLimit: 300,
+  trialCustomerLimit: 50,
+  trialAppCustomerLimit: 10,
+};
+
+export type CustomerLimitSettings = typeof DEFAULT_CUSTOMER_LIMITS;
+
 /** Plan price plus the bKash cash-out charge for Send Money, rounded up to whole taka. */
 export function payableFor(priceBdt: number, cashoutPerThousand: number) {
   const payableBdt = Math.ceil(priceBdt + (priceBdt * cashoutPerThousand) / 1000);

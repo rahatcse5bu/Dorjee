@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Copy, KeyRound, MessageCircle, RefreshCw, Smartphone, Unlink } from "lucide-react";
 import { apiRequest } from "../lib/api";
 import { useI18n } from "../lib/i18n";
+import { CustomerUsage, isFull } from "../lib/limits";
 import { Customer } from "../lib/orders";
 import { errorMessage } from "../lib/session";
+import { LimitMeter } from "./LimitMeter";
 import { useToast } from "./Toast";
 import { btnPrimary, btnSecondary, cardClass } from "./ui";
 
@@ -36,7 +38,16 @@ export function CustomerAppCard({
   const toast = useToast();
   const [invite, setInvite] = useState<{ code: string; expiresAt: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [usage, setUsage] = useState<CustomerUsage | null>(null);
   const linked = !!customer.accountId;
+
+  useEffect(() => {
+    if (!canManage) return;
+    apiRequest<CustomerUsage>(`/shops/${shopId}/customers/limits`, {}, token).then(setUsage).catch(() => undefined);
+  }, [canManage, shopId, token, customer.accountId]);
+  const app = usage?.appCustomers;
+  // A customer who is already connected keeps their place; others need a free one.
+  const appFull = !linked && !!app && isFull(app);
   const openUntil =
     customer.appInviteExpiresAt && new Date(customer.appInviteExpiresAt) > new Date() ? customer.appInviteExpiresAt : null;
   const link = invite && typeof window !== "undefined" ? `${window.location.origin}/my/join?code=${invite.code}` : "";
@@ -111,7 +122,7 @@ export function CustomerAppCard({
               </button>
             ) : (
               !invite && (
-                <button type="button" className={btnPrimary} disabled={busy} onClick={() => void createInvite()}>
+                <button type="button" className={btnPrimary} disabled={busy || appFull} onClick={() => void createInvite()}>
                   <KeyRound className="h-4 w-4" />
                   {openUntil ? t("app.newCode") : t("app.invite")}
                 </button>
@@ -120,6 +131,15 @@ export function CustomerAppCard({
           </div>
         )}
       </div>
+
+      {canManage && app && app.limit > 0 && (
+        <div className="mt-4 max-w-xs">
+          <LimitMeter used={app.used} limit={app.limit} label={t("limits.app", { used: app.used, limit: app.limit })} />
+        </div>
+      )}
+      {appFull && !invite && (
+        <p className="mt-3 rounded-xl border border-coral/20 bg-coral/[0.06] px-3 py-2 text-sm text-coral">{t("limits.appFull", { limit: app!.limit })}</p>
+      )}
 
       {invite && !linked && (
         <div className="mt-4 rounded-xl border border-teal/20 bg-teal/[0.04] p-4">

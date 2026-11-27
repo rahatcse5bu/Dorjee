@@ -11,6 +11,7 @@ import { InjectModel } from "@nestjs/mongoose";
 import * as bcrypt from "bcryptjs";
 import { isValidObjectId, Model } from "mongoose";
 import { hashInviteCode, normalizePhone } from "../common/customer-app";
+import { CustomerLimitsService } from "../customers/customer-limits.service";
 import { Customer, CustomerDocument } from "../customers/schemas/customer.schema";
 import { OrdersService } from "../orders/orders.service";
 import { Order, OrderDocument } from "../orders/schemas/order.schema";
@@ -57,6 +58,7 @@ export class CustomerPortalService {
     private readonly subscriptionsService: SubscriptionsService,
     private readonly ordersService: OrdersService,
     private readonly jwtService: JwtService,
+    private readonly limits: CustomerLimitsService,
   ) {}
 
   // ---------------------------------------------------------------- auth
@@ -116,6 +118,8 @@ export class CustomerPortalService {
     if (normalizePhone(customer.phone) !== phone) {
       throw new BadRequestException("This phone number doesn't match the one the shop has for you. Ask the shop to check it.");
     }
+    // Checked again here: the shop's app limit may have filled up since the code was made.
+    await this.limits.assertCanConnectApp(customer.shopId, customer, "customer");
     return { customer, codeHash };
   }
 

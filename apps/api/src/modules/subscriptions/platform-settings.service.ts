@@ -4,6 +4,8 @@ import { Model } from "mongoose";
 import { UpdatePlatformSettingsDto } from "./dto/update-platform-settings.dto";
 import {
   bkashCredentialsPresent,
+  CustomerLimitSettings,
+  DEFAULT_CUSTOMER_LIMITS,
   DEFAULT_PAYMENT_SETTINGS,
   DEFAULT_PLANS,
   normalizePlanCode,
@@ -12,7 +14,7 @@ import {
 } from "./plans";
 import { PlatformSettings, PlatformSettingsDocument } from "./schemas/platform-settings.schema";
 
-export interface EffectiveSettings {
+export interface EffectiveSettings extends CustomerLimitSettings {
   plans: Array<Plan & { active: boolean }>;
   trialDays: number;
   graceDays: number;
@@ -62,6 +64,10 @@ export class PlatformSettingsService {
       bkashOnlineEnabled,
       bkashCredentials: bkashCredentialsPresent(),
       bkashOnline: bkashOnlineEnabled && bkashCredentialsPresent(),
+      customerLimit: saved?.customerLimit ?? DEFAULT_CUSTOMER_LIMITS.customerLimit,
+      appCustomerLimit: saved?.appCustomerLimit ?? DEFAULT_CUSTOMER_LIMITS.appCustomerLimit,
+      trialCustomerLimit: saved?.trialCustomerLimit ?? DEFAULT_CUSTOMER_LIMITS.trialCustomerLimit,
+      trialAppCustomerLimit: saved?.trialAppCustomerLimit ?? DEFAULT_CUSTOMER_LIMITS.trialAppCustomerLimit,
       updatedAt: (saved as { updatedAt?: Date } | null)?.updatedAt,
       updatedBy: saved?.updatedBy,
     };
@@ -94,6 +100,10 @@ export class PlatformSettingsService {
         cashoutPerThousand: dto.cashoutPerThousand ?? current.cashoutPerThousand,
         manualPaymentEnabled: manual,
         bkashOnlineEnabled: online,
+        customerLimit: dto.customerLimit ?? current.customerLimit,
+        appCustomerLimit: dto.appCustomerLimit ?? current.appCustomerLimit,
+        trialCustomerLimit: dto.trialCustomerLimit ?? current.trialCustomerLimit,
+        trialAppCustomerLimit: dto.trialAppCustomerLimit ?? current.trialAppCustomerLimit,
         updatedBy,
       },
       { upsert: true, new: true },
