@@ -4,7 +4,7 @@ import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, 
 import { apiRequest } from "./api";
 import { getShopToken, getShopUser } from "./auth";
 
-export const MODULES = ["orders", "customers", "payments", "staff", "catalog", "settings", "subscription", "reports"] as const;
+export const MODULES = ["orders", "customers", "payments", "inventory", "staff", "catalog", "settings", "subscription", "reports"] as const;
 export type PermissionModule = (typeof MODULES)[number];
 export type PermissionLevel = "none" | "view" | "manage";
 export const CONFIGURABLE_ROLES = ["manager", "shop_staff", "tailor", "accountant"] as const;
@@ -81,6 +81,7 @@ export function moduleForPath(pathname: string): PermissionModule | null {
     ["/settings", "settings"],
     ["/subscription", "subscription"],
     ["/reports", "reports"],
+    ["/stock", "inventory"],
   ];
   return map.find(([prefix]) => pathname === prefix || pathname.startsWith(prefix + "/"))?.[1] ?? null;
 }

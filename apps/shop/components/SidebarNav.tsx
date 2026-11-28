@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   LogOut,
   LucideIcon,
+  Package,
   Scissors,
   Settings2,
   UserCog,
@@ -35,6 +36,7 @@ const mainNav: NavItem[] = [
   { href: "/dashboard", label: "nav.dashboard", icon: LayoutDashboard },
   { href: "/orders", label: "nav.orders", icon: ClipboardList, module: "orders" },
   { href: "/customers", label: "nav.customers", icon: Users, module: "customers" },
+  { href: "/stock", label: "nav.stock", icon: Package, module: "inventory" },
   { href: "/reports", label: "nav.reports", icon: BarChart3, module: "reports" },
   { href: "/staff", label: "nav.staff", icon: UserCog, module: "staff" },
 ];

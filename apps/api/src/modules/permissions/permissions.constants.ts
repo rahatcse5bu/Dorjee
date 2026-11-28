@@ -7,6 +7,7 @@ export const PERMISSION_MODULES = [
   "settings",
   "subscription",
   "reports",
+  "inventory",
 ] as const;
 export type PermissionModule = (typeof PERMISSION_MODULES)[number];
 
@@ -30,6 +31,7 @@ export const DEFAULT_PERMISSIONS: PermissionMatrix = {
     settings: "manage",
     subscription: "none",
     reports: "view",
+    inventory: "manage",
   },
   shop_staff: {
     orders: "manage",
@@ -40,6 +42,7 @@ export const DEFAULT_PERMISSIONS: PermissionMatrix = {
     settings: "none",
     subscription: "none",
     reports: "none",
+    inventory: "manage",
   },
   tailor: {
     orders: "view",
@@ -50,6 +53,7 @@ export const DEFAULT_PERMISSIONS: PermissionMatrix = {
     settings: "none",
     subscription: "none",
     reports: "none",
+    inventory: "view",
   },
   accountant: {
     orders: "view",
@@ -60,6 +64,7 @@ export const DEFAULT_PERMISSIONS: PermissionMatrix = {
     settings: "none",
     subscription: "view",
     reports: "view",
+    inventory: "view",
   },
 };
 

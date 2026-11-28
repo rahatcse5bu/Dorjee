@@ -7,6 +7,7 @@ import { BackupModule } from "./backup/backup.module";
 import { CatalogModule } from "./catalog/catalog.module";
 import { CustomerPortalModule } from "./customer-portal/customer-portal.module";
 import { CustomersModule } from "./customers/customers.module";
+import { InventoryModule } from "./inventory/inventory.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { OrdersModule } from "./orders/orders.module";
 import { PaymentsModule } from "./payments/payments.module";
@@ -35,6 +36,7 @@ import { UsersModule } from "./users/users.module";
     AdminModule,
     BackupModule,
     NotificationsModule,
+    InventoryModule,
   ],
 })
 export class AppModule {}
